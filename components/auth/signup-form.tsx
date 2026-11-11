@@ -20,7 +20,7 @@ export function SignupForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -35,7 +35,13 @@ export function SignupForm() {
       return;
     }
 
-    setMessage("Check your email to confirm your account, or continue to the dashboard.");
+    if (data.session) {
+      router.push("/onboarding");
+      router.refresh();
+      return;
+    }
+
+    setMessage("Check your email to confirm your account, then continue to onboarding.");
     router.refresh();
   }
 

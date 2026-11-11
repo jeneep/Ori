@@ -84,6 +84,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/login` | Email/password sign-in |
 | `/signup` | Email/password sign-up |
 | `/auth/callback` | OAuth / email confirmation callback |
-| `/dashboard` | Protected dashboard (requires session) |
+| `/dashboard` | Protected dashboard (requires session + onboarding) |
+| `/onboarding` | Collect goals, constraints, and first topic |
+| `/settings` | Edit goals, constraints, proactivity frequency |
 
-Middleware refreshes the Supabase session and redirects unauthenticated users away from `/dashboard`.
+Middleware refreshes the Supabase session, sends new users to `/onboarding`, and redirects unauthenticated users away from protected routes.

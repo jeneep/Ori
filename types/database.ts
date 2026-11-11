@@ -11,6 +11,7 @@ export type ContentType = "note" | "document" | "summary" | "source";
 export type ExperimentStatus = "draft" | "running" | "completed" | "cancelled";
 export type MessageRole = "user" | "assistant" | "system";
 export type ConflictChoiceSelection = "a" | "b";
+export type ProactivityFrequency = "off" | "daily" | "weekly";
 
 export interface Database {
   public: {
@@ -21,6 +22,10 @@ export interface Database {
           email: string | null;
           full_name: string | null;
           avatar_url: string | null;
+          goals: string[];
+          constraints: string;
+          proactivity_frequency: ProactivityFrequency;
+          onboarding_completed: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -29,6 +34,10 @@ export interface Database {
           email?: string | null;
           full_name?: string | null;
           avatar_url?: string | null;
+          goals?: string[];
+          constraints?: string;
+          proactivity_frequency?: ProactivityFrequency;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -37,6 +46,10 @@ export interface Database {
           email?: string | null;
           full_name?: string | null;
           avatar_url?: string | null;
+          goals?: string[];
+          constraints?: string;
+          proactivity_frequency?: ProactivityFrequency;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -317,6 +330,7 @@ export interface Database {
       experiment_status: ExperimentStatus;
       message_role: MessageRole;
       conflict_choice_selection: ConflictChoiceSelection;
+      proactivity_frequency: ProactivityFrequency;
     };
     CompositeTypes: Record<string, never>;
   };

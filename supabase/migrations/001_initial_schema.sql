@@ -29,8 +29,14 @@ create table public.profiles (
   email text,
   full_name text,
   avatar_url text,
+  goals text[] not null default '{}'::text[],
+  constraints text not null default '',
+  proactivity_frequency text not null default 'off'
+    check (proactivity_frequency in ('off', 'daily', 'weekly')),
+  onboarding_completed boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint profiles_goals_max_three check (cardinality(goals) <= 3)
 );
 
 create trigger profiles_updated_at

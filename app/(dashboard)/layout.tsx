@@ -17,6 +17,16 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile?.onboarding_completed) {
+    redirect("/onboarding");
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="border-b border-zinc-200 bg-white">
@@ -31,6 +41,9 @@ export default async function DashboardLayout({
             <nav className="flex items-center gap-4 text-sm text-zinc-600">
               <Link href="/dashboard" className="hover:text-zinc-900">
                 Dashboard
+              </Link>
+              <Link href="/settings" className="hover:text-zinc-900">
+                Settings
               </Link>
             </nav>
           </div>

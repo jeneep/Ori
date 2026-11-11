@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
@@ -6,29 +7,80 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const [{ data: profile }, { data: topics }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle(),
+    supabase
+      .from("topics")
+      .select("id, title, status, created_at")
+      .eq("user_id", user!.id)
+      .order("created_at", { ascending: false }),
+  ]);
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
           Dashboard
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          You are signed in. This is a protected server-rendered page.
+          Your goals, constraints, and topics in one place.
         </p>
       </div>
 
+      <section className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-lg border border-zinc-200 bg-white p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-zinc-500">Goals</h2>
+            <Link href="/settings" className="text-xs font-medium text-zinc-700 underline-offset-4 hover:underline">
+              Edit
+            </Link>
+          </div>
+          {profile?.goals?.length ? (
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-900">
+              {profile.goals.map((goal) => (
+                <li key={goal}>{goal}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-zinc-500">No goals yet.</p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 bg-white p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-zinc-500">Constraints</h2>
+            <Link href="/settings" className="text-xs font-medium text-zinc-700 underline-offset-4 hover:underline">
+              Edit
+            </Link>
+          </div>
+          <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-900">
+            {profile?.constraints?.trim() || "None set."}
+          </p>
+          <p className="mt-4 text-xs text-zinc-500">
+            Proactivity: {profile?.proactivity_frequency ?? "off"}
+          </p>
+        </div>
+      </section>
+
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
-        <h2 className="text-sm font-medium text-zinc-500">Account</h2>
-        <dl className="mt-3 space-y-2 text-sm">
-          <div className="flex gap-2">
-            <dt className="w-24 text-zinc-500">Email</dt>
-            <dd className="font-medium text-zinc-900">{user?.email}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="w-24 text-zinc-500">User ID</dt>
-            <dd className="font-mono text-xs text-zinc-700">{user?.id}</dd>
-          </div>
-        </dl>
+        <h2 className="text-sm font-medium text-zinc-500">Topics</h2>
+        {topics?.length ? (
+          <ul className="mt-3 divide-y divide-zinc-100">
+            {topics.map((topic) => (
+              <li
+                key={topic.id}
+                className="flex items-center justify-between gap-3 py-3 text-sm"
+              >
+                <span className="font-medium text-zinc-900">{topic.title}</span>
+                <span className="text-xs uppercase tracking-wide text-zinc-500">
+                  {topic.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-zinc-500">No topics yet.</p>
+        )}
       </section>
     </div>
   );

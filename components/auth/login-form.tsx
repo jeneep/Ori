@@ -18,19 +18,32 @@ export function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
     if (signInError) {
+      setLoading(false);
       setError(signInError.message);
       return;
     }
 
-    router.push("/dashboard");
+    let nextPath = "/onboarding";
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (profile?.onboarding_completed) {
+        nextPath = "/dashboard";
+      }
+    }
+
+    setLoading(false);
+    router.push(nextPath);
     router.refresh();
   }
 

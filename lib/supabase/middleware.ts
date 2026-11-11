@@ -32,7 +32,6 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Refresh the auth session — important for Server Components
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -40,18 +39,48 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
-  const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isOnboardingRoute = pathname.startsWith("/onboarding");
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/settings");
 
-  if (!user && isDashboardRoute) {
+  if (!user && (isProtectedRoute || isOnboardingRoute)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isAuthRoute) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/dashboard";
-    return NextResponse.redirect(redirectUrl);
+  if (user && (isAuthRoute || isProtectedRoute || isOnboardingRoute || pathname === "/")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const onboarded = Boolean(profile?.onboarding_completed);
+
+    if (isAuthRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = onboarded ? "/dashboard" : "/onboarding";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    if (!onboarded && isProtectedRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/onboarding";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    if (onboarded && isOnboardingRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/dashboard";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    if (pathname === "/" && user) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = onboarded ? "/dashboard" : "/onboarding";
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   return supabaseResponse;
