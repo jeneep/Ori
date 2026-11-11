@@ -72,6 +72,7 @@ export function TopicChat({
   const [currentView, setCurrentView] = useState(initialCurrentView);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [providerNote, setProviderNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [updatingViewFor, setUpdatingViewFor] = useState<string | null>(null);
   const [creatingExperimentFor, setCreatingExperimentFor] = useState<
@@ -108,12 +109,22 @@ export function TopicChat({
       const payload = (await response.json()) as {
         error?: string;
         messages?: ChatMessage[];
+        provider?: "openai" | "fallback";
+        providerError?: string | null;
       };
 
       if (!response.ok || !payload.messages) {
         setError(payload.error ?? "Coach request failed.");
         setDraft(message);
         return;
+      }
+
+      if (payload.provider === "openai") {
+        setProviderNote("Reply generated with OpenAI.");
+      } else if (payload.providerError) {
+        setProviderNote(`Used offline fallback (${payload.providerError})`);
+      } else {
+        setProviderNote("Used offline fallback.");
       }
 
       setMessages((prev) => [...prev, ...payload.messages!]);
@@ -304,6 +315,11 @@ export function TopicChat({
         {error ? (
           <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
             {error}
+          </p>
+        ) : null}
+        {providerNote ? (
+          <p className="text-xs text-zinc-500" role="status">
+            {providerNote}
           </p>
         ) : null}
         <button

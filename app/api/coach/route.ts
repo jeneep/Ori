@@ -122,6 +122,8 @@ export async function POST(request: Request) {
     important: coachResult.important,
     proposed_current_view: coachResult.proposed_current_view,
     experiment: coachResult.experiment,
+    provider: coachResult.provider,
+    provider_error: coachResult.providerError,
   } satisfies Json;
 
   const { data: assistantMessageRow, error: assistantError } = await supabase
@@ -146,6 +148,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     messages: [userMessageRow, assistantMessageRow],
     reply: coachResult.reply,
+    provider: coachResult.provider,
+    providerError: coachResult.providerError,
     offerUpdateCurrentView: Boolean(
       coachResult.important && coachResult.proposed_current_view
     ),

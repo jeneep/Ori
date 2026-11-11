@@ -30,6 +30,8 @@ export type CoachLlmResult = {
   important: boolean;
   proposed_current_view: string | null;
   experiment: CoachExperimentSuggestion | null;
+  provider: "openai" | "fallback";
+  providerError: string | null;
 };
 
 const MAX_CONTENT_SNIPPETS = 6;
@@ -59,11 +61,18 @@ export async function generateCoachReply(input: {
   messages: CoachMessage[];
   userMessage: string;
 }): Promise<CoachLlmResult> {
-  const fallback = buildFallbackReply(input);
-  const apiKey = process.env.OPENAI_API_KEY;
+  const fallback = {
+    ...buildFallbackReply(input),
+    provider: "fallback" as const,
+    providerError: null as string | null,
+  };
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
 
   if (!apiKey) {
-    return fallback;
+    return {
+      ...fallback,
+      providerError: "OPENAI_API_KEY is not set in this runtime.",
+    };
   }
 
   const contentBlock = input.content
@@ -116,7 +125,8 @@ export async function generateCoachReply(input: {
               buildUserModelSummary(input.userModel),
               "",
               "Current view:",
-              input.currentView.trim() || "(empty — synthesize carefully from available context)",
+              input.currentView.trim() ||
+                "(empty — synthesize carefully from available context)",
               "",
               "Recent relevant content:",
               contentBlock || "(none)",
@@ -133,7 +143,22 @@ export async function generateCoachReply(input: {
     });
 
     if (!response.ok) {
-      return fallback;
+      const errorBody = await response.text().catch(() => "");
+      let detail = `OpenAI HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(errorBody) as {
+          error?: { message?: string };
+        };
+        if (parsed.error?.message) {
+          detail = parsed.error.message;
+        }
+      } catch {
+        if (errorBody) detail = errorBody.slice(0, 300);
+      }
+      return {
+        ...fallback,
+        providerError: detail,
+      };
     }
 
     const data = (await response.json()) as {
@@ -141,19 +166,31 @@ export async function generateCoachReply(input: {
     };
     const raw = data.choices?.[0]?.message?.content?.trim();
     if (!raw) {
-      return fallback;
+      return {
+        ...fallback,
+        providerError: "OpenAI returned an empty response.",
+      };
     }
 
-    return normalizeCoachResult(JSON.parse(raw), fallback.reply);
-  } catch {
-    return fallback;
+    const normalized = normalizeCoachResult(JSON.parse(raw), fallback.reply);
+    return {
+      ...normalized,
+      provider: "openai",
+      providerError: null,
+    };
+  } catch (error) {
+    return {
+      ...fallback,
+      providerError:
+        error instanceof Error ? error.message : "OpenAI request failed.",
+    };
   }
 }
 
 function normalizeCoachResult(
   value: unknown,
   fallbackReply: string
-): CoachLlmResult {
+): Omit<CoachLlmResult, "provider" | "providerError"> {
   const record = (value ?? {}) as Record<string, unknown>;
   const reply =
     typeof record.reply === "string" && record.reply.trim()
@@ -196,7 +233,7 @@ function buildFallbackReply(input: {
   currentView: string;
   content: CoachContentSnippet[];
   userMessage: string;
-}): CoachLlmResult {
+}): Omit<CoachLlmResult, "provider" | "providerError"> {
   const goalHint = input.userModel.goals[0]
     ? ` Keeping your goal “${input.userModel.goals[0]}” in mind`
     : "";
