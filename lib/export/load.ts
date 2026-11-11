@@ -74,7 +74,7 @@ export async function loadAllExportBundle(
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, goals, constraints, proactivity_frequency, onboarding_completed, created_at, updated_at"
+      "id, email, full_name, goals, constraints, proactivity_frequency, onboarding_completed, ori_name, persona_tone, persona_custom_tone, persona_guide_note, created_at, updated_at"
     )
     .eq("id", userId)
     .maybeSingle();

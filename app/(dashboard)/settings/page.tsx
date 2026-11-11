@@ -21,7 +21,7 @@ export default async function SettingsPage() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Update your goals, constraints, and how often Ori reaches out.
+          Tune Ori’s voice, your goals, and how often Ori reaches out.
         </p>
       </div>
 

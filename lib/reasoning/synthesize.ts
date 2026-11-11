@@ -139,7 +139,7 @@ function buildFallbackReasoning(input: {
     || null;
 
   const synthesized = [
-    current || `Working view for ${input.persona.name}.`,
+    current || `Working view for ${input.persona.userName}.`,
     `Latest signal (${input.signal.kind}): ${signalText}`,
     contentHint ? `Related material: ${contentHint}` : null,
   ]
@@ -250,14 +250,15 @@ export async function runSyntheticReasoning(input: {
         {
           role: "system",
           content: [
-            "You are Ori's synthetic intelligence reasoning layer.",
-            "Compare a new signal against the topic's current_view, retrieved content, experiments, and the user's persona/model.",
-            "Be calm, precise, and non-dramatic. Do not invent facts.",
+            "You are the synthetic intelligence reasoning layer for a personal coach.",
+            "Compare a new signal against the topic's current_view, retrieved content, experiments, and the user's chosen coach persona/model.",
+            "Match the coach persona voice when drafting synthesized_view (name, tone, and guide note).",
+            "Be precise and non-dramatic. Do not invent facts.",
             "Return JSON only with keys:",
             "reinforcements (string[]), conflicts (string[]), gaps (string[]),",
             "synthesized_view (string), change_magnitude ('none'|'small'|'substantial'),",
             "aligned (boolean), notes_for_coach (string).",
-            "synthesized_view should be 2-5 sentences, respecting persona priorities and constraints.",
+            "synthesized_view should be 2-5 sentences, respecting persona priorities, tone, and constraints.",
             "change_magnitude=small means a light refinement clearly aligned with the existing view.",
             "change_magnitude=substantial means stakes, conflicts, or a meaningfully new framing.",
             "aligned=true only when the synthesis does not fight the user model/persona.",
@@ -369,7 +370,7 @@ export function formatReasoningForCoach(
 ): string {
   const lines = [
     "Synthetic reasoning context:",
-    `Persona: ${reasoning.persona.stance}`,
+    formatPersonaForPrompt(reasoning.persona),
     `Working current_view: ${workingView.trim() || "(empty)"}`,
     reasoning.analysis.reinforcements.length
       ? `Reinforcements: ${reasoning.analysis.reinforcements.join("; ")}`

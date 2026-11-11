@@ -1,4 +1,4 @@
-import type { ProactivityFrequency } from "@/types/database";
+import type { PersonaTone, ProactivityFrequency } from "@/types/database";
 import {
   callGrokChatCompletions,
   formatGrokProviderError,
@@ -6,13 +6,42 @@ import {
   getGrokModel,
   readChatCompletionContent,
 } from "@/lib/llm/xai";
+import {
+  buildCoachSystemPrompt,
+  buildPersonaFromUserModel,
+  DEFAULT_PERSONA_SETTINGS,
+  formatPersonaForPrompt,
+  normalizePersonaSettings,
+} from "@/lib/reasoning/persona";
 
 export type UserModel = {
   goals: string[];
   constraints: string;
   proactivity_frequency: ProactivityFrequency;
   full_name: string | null;
+  ori_name: string;
+  persona_tone: PersonaTone;
+  persona_custom_tone: string;
+  persona_guide_note: string;
 };
+
+export function toUserModel(
+  profile: Partial<UserModel> & {
+    goals?: string[] | null;
+    constraints?: string | null;
+    proactivity_frequency?: ProactivityFrequency | null;
+    full_name?: string | null;
+  }
+): UserModel {
+  const persona = normalizePersonaSettings(profile);
+  return {
+    goals: profile.goals ?? [],
+    constraints: profile.constraints ?? "",
+    proactivity_frequency: profile.proactivity_frequency ?? "off",
+    full_name: profile.full_name ?? null,
+    ...persona,
+  };
+}
 
 export type CoachContentSnippet = {
   id: string;
@@ -125,12 +154,16 @@ export function buildUserModelSummary(model: UserModel): string {
       : "(none set)";
   const constraints = model.constraints.trim() || "(none set)";
   const name = model.full_name?.trim() || "User";
+  const persona = buildPersonaFromUserModel(model);
 
   return [
     `Name: ${name}`,
     `Goals:\n${goals}`,
     `Constraints: ${constraints}`,
     `Proactivity: ${model.proactivity_frequency}`,
+    "",
+    "Persona:",
+    formatPersonaForPrompt(persona),
   ].join("\n");
 }
 
@@ -174,6 +207,11 @@ export async function generateCoachReply(input: {
     .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
     .join("\n\n");
 
+  const persona = buildPersonaFromUserModel({
+    ...DEFAULT_PERSONA_SETTINGS,
+    ...input.userModel,
+  });
+
   try {
     const result = await callGrokChatCompletions({
       model: getGrokModel(),
@@ -182,18 +220,7 @@ export async function generateCoachReply(input: {
       messages: [
         {
           role: "system",
-          content: [
-            "You are Ori, a thoughtful coaching partner.",
-            "Stay consistent with the user's synthesized model (goals/constraints) and the topic's current_view.",
-            "When synthetic reasoning context is provided, use it: note reinforcements, conflicts, and gaps without being alarmist.",
-            "Do not invent facts that contradict the current_view; if new info conflicts, note the tension and propose an updated current_view.",
-            "Keep replies concise (2-5 short paragraphs max).",
-            "Return JSON only with keys:",
-            "reply (string), important (boolean), proposed_current_view (string|null), experiment ({name, hypothesis}|null).",
-            "Set important=true when the exchange clarified stakes, decisions, conflicts, or new durable understanding.",
-            "When important=true, proposed_current_view should be an updated 2-5 sentence synthesis of the topic.",
-            "Include experiment when a concrete small test would help; otherwise null.",
-          ].join(" "),
+          content: buildCoachSystemPrompt(persona),
         },
         {
           role: "user",
