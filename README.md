@@ -33,9 +33,27 @@ lib/
     middleware.ts
 types/
   database.ts
+supabase/
+  migrations/
+    001_initial_schema.sql
 middleware.ts
 public/
 ```
+
+## Database
+
+Initial schema lives in `supabase/migrations/001_initial_schema.sql`:
+
+- **profiles** — mirrors `auth.users` (auto-created on signup)
+- **topics** — user-owned conversation / conflict topics
+- **content** — topic content with optional `vector(1536)` embeddings
+- **experiments** — topic experiments with JSON config/results
+- **messages** — chat messages per topic (optional embeddings)
+- **conflict_choices** — A/B conflict choices tied to a topic (and optional experiment)
+
+All tables have RLS (own-row access). Indexes exist on `user_id` and `topic_id` where applicable.
+
+Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migration up`).
 
 ## Environment variables
 
