@@ -90,8 +90,8 @@ export function CheckInCard({ model }: { model: CheckInModel }) {
         </div>
       ) : model.frequency !== "off" ? (
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Nothing open on unmuted topics. Ori will stay out of the way until
-          something moves.
+          Nothing open on unmuted topics. {model.coachName} will stay out of the
+          way until something moves.
         </p>
       ) : null}
 
