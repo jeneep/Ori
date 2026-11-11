@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Direct smoke test for the coach Grok/xAI path (mirrors lib/llm/coach.ts).
- * Requires GROK_API_KEY or XAI_API_KEY. No Supabase required.
+ * Requires GROK_API_KEY, XAI_API_KEY, or Grok_key. No Supabase required.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -23,9 +23,11 @@ function loadEnvLocal() {
 loadEnvLocal();
 
 const apiKey =
-  process.env.GROK_API_KEY?.trim() || process.env.XAI_API_KEY?.trim();
+  process.env.GROK_API_KEY?.trim() ||
+  process.env.XAI_API_KEY?.trim() ||
+  process.env.Grok_key?.trim();
 if (!apiKey) {
-  console.error("FAIL: GROK_API_KEY or XAI_API_KEY missing");
+  console.error("FAIL: GROK_API_KEY, XAI_API_KEY, or Grok_key missing");
   process.exit(1);
 }
 

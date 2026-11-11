@@ -1,9 +1,15 @@
 const XAI_CHAT_COMPLETIONS_URL = "https://api.x.ai/v1/chat/completions";
 
-/** Prefer GROK_API_KEY, then XAI_API_KEY (xAI's documented env name). */
+/**
+ * Prefer GROK_API_KEY, then XAI_API_KEY (xAI's documented env name),
+ * then Grok_key (common Cloud Agent / Cursor secret alias).
+ */
 export function getGrokApiKey(): string | null {
   const key =
-    process.env.GROK_API_KEY?.trim() || process.env.XAI_API_KEY?.trim() || "";
+    process.env.GROK_API_KEY?.trim() ||
+    process.env.XAI_API_KEY?.trim() ||
+    process.env.Grok_key?.trim() ||
+    "";
   return key || null;
 }
 
@@ -24,7 +30,7 @@ export function formatGrokProviderError(detail: string): string {
     lower.includes("invalid api key") ||
     lower.includes("unauthorized")
   ) {
-    return "GROK_API_KEY / XAI_API_KEY is invalid. Update the secret and retry.";
+    return "GROK_API_KEY / XAI_API_KEY / Grok_key is invalid. Update the secret and retry.";
   }
   if (
     lower.includes("credit") ||
@@ -49,7 +55,8 @@ export async function callGrokChatCompletions(body: Record<string, unknown>): Pr
       ok: false,
       status: 0,
       data: null,
-      errorDetail: "GROK_API_KEY or XAI_API_KEY is not set in this runtime.",
+      errorDetail:
+        "GROK_API_KEY, XAI_API_KEY, or Grok_key is not set in this runtime.",
     };
   }
 

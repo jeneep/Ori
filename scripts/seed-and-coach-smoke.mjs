@@ -6,7 +6,7 @@
  * Requires in env:
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
- *   GROK_API_KEY or XAI_API_KEY
+ *   GROK_API_KEY, XAI_API_KEY, or Grok_key
  */
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
@@ -31,7 +31,9 @@ loadEnvLocal();
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const grokKey =
-  process.env.GROK_API_KEY?.trim() || process.env.XAI_API_KEY?.trim();
+  process.env.GROK_API_KEY?.trim() ||
+  process.env.XAI_API_KEY?.trim() ||
+  process.env.Grok_key?.trim();
 
 function fail(message) {
   console.error(`FAIL: ${message}`);
@@ -40,7 +42,7 @@ function fail(message) {
 
 if (!url) fail("NEXT_PUBLIC_SUPABASE_URL missing");
 if (!serviceKey) fail("SUPABASE_SERVICE_ROLE_KEY missing");
-if (!grokKey) fail("GROK_API_KEY or XAI_API_KEY missing");
+if (!grokKey) fail("GROK_API_KEY, XAI_API_KEY, or Grok_key missing");
 
 const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
