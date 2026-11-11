@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RefiningIndicator } from "@/components/reasoning/refining-indicator";
+import { isSubstantialCoachQuestion } from "@/lib/reasoning/substantial";
 import type { Json } from "@/types/database";
 
 export type ChatMessage = {
@@ -27,12 +29,14 @@ function readMetadata(metadata: Json): {
   proposedCurrentView: string | null;
   experiment: ExperimentSuggestion | null;
   important: boolean;
+  autoUpdated: boolean;
 } {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
     return {
       proposedCurrentView: null,
       experiment: null,
       important: false,
+      autoUpdated: false,
     };
   }
 
@@ -55,10 +59,17 @@ function readMetadata(metadata: Json): {
     }
   }
 
+  let autoUpdated = false;
+  if (record.reasoning && typeof record.reasoning === "object") {
+    const reasoning = record.reasoning as Record<string, unknown>;
+    autoUpdated = Boolean(reasoning.auto_updated);
+  }
+
   return {
     proposedCurrentView: proposed,
     experiment,
     important: Boolean(record.important),
+    autoUpdated,
   };
 }
 
@@ -75,6 +86,7 @@ export function TopicChat({
   const [providerNote, setProviderNote] = useState<string | null>(null);
   const [grokReady, setGrokReady] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refining, setRefining] = useState(false);
   const [updatingViewFor, setUpdatingViewFor] = useState<string | null>(null);
   const [creatingExperimentFor, setCreatingExperimentFor] = useState<
     string | null
@@ -82,6 +94,14 @@ export function TopicChat({
   const [statusByMessage, setStatusByMessage] = useState<Record<string, string>>(
     {}
   );
+
+  useEffect(() => {
+    setCurrentView(initialCurrentView);
+  }, [initialCurrentView]);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,8 +157,10 @@ export function TopicChat({
     const message = draft.trim();
     if (!message || loading) return;
 
+    const needsDeeperReasoning = isSubstantialCoachQuestion(message);
     setError(null);
     setLoading(true);
+    setRefining(needsDeeperReasoning);
     setDraft("");
 
     try {
@@ -152,6 +174,9 @@ export function TopicChat({
         messages?: ChatMessage[];
         provider?: "grok" | "fallback";
         providerError?: string | null;
+        currentView?: string;
+        currentViewUpdated?: boolean;
+        deeperReasoning?: boolean;
       };
 
       if (!response.ok || !payload.messages) {
@@ -162,13 +187,23 @@ export function TopicChat({
 
       if (payload.provider === "grok") {
         setGrokReady(true);
-        setProviderNote("Reply generated with Grok.");
+        if (payload.currentViewUpdated) {
+          setProviderNote("Reply generated with Grok. Current view refined.");
+        } else if (payload.deeperReasoning) {
+          setProviderNote("Reply generated with Grok after deeper reasoning.");
+        } else {
+          setProviderNote("Reply generated with Grok.");
+        }
       } else if (payload.providerError) {
         setGrokReady(false);
         setProviderNote(`Used offline fallback — ${payload.providerError}`);
       } else {
         setGrokReady(false);
         setProviderNote("Used offline fallback.");
+      }
+
+      if (typeof payload.currentView === "string") {
+        setCurrentView(payload.currentView);
       }
 
       setMessages((prev) => [...prev, ...payload.messages!]);
@@ -178,6 +213,7 @@ export function TopicChat({
       setDraft(message);
     } finally {
       setLoading(false);
+      setRefining(false);
     }
   }
 
@@ -252,9 +288,12 @@ export function TopicChat({
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Current view
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Current view
+          </p>
+          <RefiningIndicator active={refining} />
+        </div>
         <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">
           {currentView.trim() ||
             "No current view yet. Chat with Ori to synthesize one."}
@@ -285,6 +324,12 @@ export function TopicChat({
                   {message.role}
                 </p>
                 <p className="whitespace-pre-wrap">{message.content}</p>
+
+                {isAssistant && meta.autoUpdated ? (
+                  <p className="text-xs text-zinc-500">
+                    Current view was lightly refined to stay aligned.
+                  </p>
+                ) : null}
 
                 {isAssistant && meta.proposedCurrentView ? (
                   <div className="rounded-md border border-zinc-200 bg-white p-3 text-zinc-800">
@@ -361,6 +406,10 @@ export function TopicChat({
             {error}
           </p>
         ) : null}
+        <RefiningIndicator
+          active={refining}
+          label="Refining current view…"
+        />
         {providerNote ? (
           <p
             className={`text-xs ${
@@ -376,7 +425,7 @@ export function TopicChat({
           disabled={loading || !draft.trim()}
           className="self-start rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Thinking…" : "Send"}
+          {loading ? (refining ? "Refining…" : "Thinking…") : "Send"}
         </button>
       </form>
     </div>

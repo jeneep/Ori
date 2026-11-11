@@ -2,11 +2,40 @@ import { NextResponse } from "next/server";
 import {
   generateCoachReply,
   type CoachMessage,
+  type UserModel,
 } from "@/lib/llm/coach";
+import { isSubstantialCoachQuestion } from "@/lib/reasoning/substantial";
+import {
+  formatReasoningForCoach,
+  runSyntheticReasoning,
+  type SyntheticReasoningResult,
+} from "@/lib/reasoning/synthesize";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
 
 export const runtime = "nodejs";
+
+function reasoningPayload(reasoning: SyntheticReasoningResult | null) {
+  if (!reasoning) {
+    return {
+      ran: false,
+      autoUpdated: false,
+      changeMagnitude: null,
+      analysis: null,
+      proposedCurrentView: null,
+    };
+  }
+
+  return {
+    ran: reasoning.ran,
+    autoUpdated: reasoning.autoUpdate,
+    changeMagnitude: reasoning.changeMagnitude,
+    analysis: reasoning.analysis,
+    proposedCurrentView: reasoning.proposedCurrentView,
+    provider: reasoning.provider,
+    providerError: reasoning.providerError,
+  };
+}
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -61,14 +90,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const [{ data: contentItems }, { data: recentMessages }] = await Promise.all([
+  const [
+    { data: contentItems },
+    { data: recentMessages },
+    { data: experiments },
+  ] = await Promise.all([
     supabase
       .from("content")
-      .select("id, title, summary, content_type, source_url, created_at")
+      .select("id, title, summary, content_type, source_url, body, created_at")
       .eq("topic_id", topicId)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(8),
+      .limit(12),
     supabase
       .from("messages")
       .select("id, role, content, created_at, metadata")
@@ -76,6 +109,13 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(12),
+    supabase
+      .from("experiments")
+      .select("id, name, hypothesis, status, created_at")
+      .eq("topic_id", topicId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(8),
   ]);
 
   const chronological = [...(recentMessages ?? [])].reverse();
@@ -103,27 +143,105 @@ export async function POST(request: Request) {
     );
   }
 
+  const userModel: UserModel = {
+    goals: profile.goals,
+    constraints: profile.constraints,
+    proactivity_frequency: profile.proactivity_frequency,
+    full_name: profile.full_name,
+  };
+
+  const deeperReasoning = isSubstantialCoachQuestion(message);
+  let reasoning: SyntheticReasoningResult | null = null;
+  let workingView = topic.current_view;
+  let currentViewUpdated = false;
+
+  if (deeperReasoning) {
+    reasoning = await runSyntheticReasoning({
+      trigger: "coach_question",
+      topicTitle: topic.title,
+      currentView: topic.current_view,
+      userModel,
+      content: contentItems ?? [],
+      experiments: experiments ?? [],
+      signal: { kind: "message", text: message },
+    });
+
+    if (reasoning.autoUpdate && reasoning.synthesizedView) {
+      const { data: updatedTopic, error: updateError } = await supabase
+        .from("topics")
+        .update({ current_view: reasoning.synthesizedView })
+        .eq("id", topicId)
+        .eq("user_id", user.id)
+        .select("current_view")
+        .maybeSingle();
+
+      if (!updateError && updatedTopic) {
+        workingView = updatedTopic.current_view;
+        currentViewUpdated = true;
+      }
+    } else if (reasoning.synthesizedView && reasoning.changeMagnitude !== "none") {
+      // Prefer the refined synthesis as the working view for this reply
+      // without persisting unless auto-update or user accepts.
+      workingView = reasoning.synthesizedView;
+    }
+  }
+
+  const experimentsSummary = (experiments ?? [])
+    .map(
+      (exp) =>
+        `- [${exp.status}] ${exp.name}${
+          exp.hypothesis ? `: ${exp.hypothesis}` : ""
+        }`
+    )
+    .join("\n");
+
   const coachResult = await generateCoachReply({
     topicTitle: topic.title,
-    userModel: {
-      goals: profile.goals,
-      constraints: profile.constraints,
-      proactivity_frequency: profile.proactivity_frequency,
-      full_name: profile.full_name,
-    },
-    currentView: topic.current_view,
-    content: contentItems ?? [],
+    userModel,
+    currentView: workingView,
+    content: (contentItems ?? []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      summary: item.summary,
+      content_type: item.content_type,
+      source_url: item.source_url,
+    })),
     messages: history,
     userMessage: message,
+    reasoningContext: reasoning
+      ? formatReasoningForCoach(reasoning, workingView)
+      : null,
+    experimentsSummary: experimentsSummary || null,
   });
+
+  const proposedFromReasoning =
+    !currentViewUpdated && reasoning?.proposedCurrentView
+      ? reasoning.proposedCurrentView
+      : null;
+  const proposedCurrentView =
+    proposedFromReasoning || coachResult.proposed_current_view;
+  const offerUpdateCurrentView = Boolean(
+    !currentViewUpdated && proposedCurrentView
+  );
 
   const assistantMetadata = {
     source: "coach_chat",
-    important: coachResult.important,
-    proposed_current_view: coachResult.proposed_current_view,
+    important: coachResult.important || Boolean(proposedCurrentView),
+    proposed_current_view: offerUpdateCurrentView ? proposedCurrentView : null,
     experiment: coachResult.experiment,
     provider: coachResult.provider,
     provider_error: coachResult.providerError,
+    reasoning: reasoning
+      ? {
+          ran: true,
+          auto_updated: currentViewUpdated,
+          change_magnitude: reasoning.changeMagnitude,
+          aligned: reasoning.aligned,
+          reinforcements: reasoning.analysis.reinforcements,
+          conflicts: reasoning.analysis.conflicts,
+          gaps: reasoning.analysis.gaps,
+        }
+      : { ran: false },
   } satisfies Json;
 
   const { data: assistantMessageRow, error: assistantError } = await supabase
@@ -150,10 +268,13 @@ export async function POST(request: Request) {
     reply: coachResult.reply,
     provider: coachResult.provider,
     providerError: coachResult.providerError,
-    offerUpdateCurrentView: Boolean(
-      coachResult.important && coachResult.proposed_current_view
-    ),
-    proposedCurrentView: coachResult.proposed_current_view,
+    deeperReasoning,
+    // Only surface a new current_view when it was persisted (auto-update).
+    currentView: currentViewUpdated ? workingView : topic.current_view,
+    currentViewUpdated,
+    offerUpdateCurrentView,
+    proposedCurrentView: offerUpdateCurrentView ? proposedCurrentView : null,
     experimentSuggestion: coachResult.experiment,
+    reasoning: reasoningPayload(reasoning),
   });
 }
