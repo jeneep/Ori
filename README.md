@@ -60,6 +60,12 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - `POST /api/ingest` stores `title`, `source_url` or raw text (`body`), `content_type`, and an LLM `summary`
 - Topic pages at `/topics/[topicId]` list captured content
 
+### Persona settings
+- Settings lets you name Ori, choose a tone (calm guide / direct coach / wise friend / custom), and add a short guide note
+- Stored on `profiles` (`ori_name`, `persona_tone`, `persona_custom_tone`, `persona_guide_note`)
+- Injected into every coach system prompt and the synthetic reasoning layer
+- Settings UI includes a live preview of how Ori will sound
+
 ### Coach chat
 - Topic page shows `current_view` and a chat that loads recent messages
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis

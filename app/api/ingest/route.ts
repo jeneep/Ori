@@ -5,7 +5,7 @@ import {
   titleFromFilename,
 } from "@/lib/ingest/extract";
 import { generateShortSummary } from "@/lib/llm/summarize";
-import type { UserModel } from "@/lib/llm/coach";
+import { toUserModel } from "@/lib/llm/coach";
 import {
   runSyntheticReasoning,
   type SyntheticReasoningResult,
@@ -72,7 +72,9 @@ export async function POST(request: Request) {
         .maybeSingle(),
       supabase
         .from("profiles")
-        .select("goals, constraints, proactivity_frequency, full_name")
+        .select(
+          "goals, constraints, proactivity_frequency, full_name, ori_name, persona_tone, persona_custom_tone, persona_guide_note"
+        )
         .eq("id", user.id)
         .maybeSingle(),
     ]);
@@ -188,12 +190,7 @@ export async function POST(request: Request) {
       .limit(8),
   ]);
 
-  const userModel: UserModel = {
-    goals: profile?.goals ?? [],
-    constraints: profile?.constraints ?? "",
-    proactivity_frequency: profile?.proactivity_frequency ?? "off",
-    full_name: profile?.full_name ?? null,
-  };
+  const userModel = toUserModel(profile ?? {});
 
   const reasoning = await runSyntheticReasoning({
     trigger: "content_ingest",

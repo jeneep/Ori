@@ -18,6 +18,11 @@ export type ExperimentStatus = "draft" | "running" | "completed" | "cancelled";
 export type MessageRole = "user" | "assistant" | "system";
 export type ConflictChoiceSelection = "a" | "b";
 export type ProactivityFrequency = "off" | "daily" | "weekly";
+export type PersonaTone =
+  | "calm_guide"
+  | "direct_coach"
+  | "wise_friend"
+  | "custom";
 
 export interface Database {
   public: {
@@ -32,6 +37,10 @@ export interface Database {
           constraints: string;
           proactivity_frequency: ProactivityFrequency;
           onboarding_completed: boolean;
+          ori_name: string;
+          persona_tone: PersonaTone;
+          persona_custom_tone: string;
+          persona_guide_note: string;
           created_at: string;
           updated_at: string;
         };
@@ -44,6 +53,10 @@ export interface Database {
           constraints?: string;
           proactivity_frequency?: ProactivityFrequency;
           onboarding_completed?: boolean;
+          ori_name?: string;
+          persona_tone?: PersonaTone;
+          persona_custom_tone?: string;
+          persona_guide_note?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -56,6 +69,10 @@ export interface Database {
           constraints?: string;
           proactivity_frequency?: ProactivityFrequency;
           onboarding_completed?: boolean;
+          ori_name?: string;
+          persona_tone?: PersonaTone;
+          persona_custom_tone?: string;
+          persona_guide_note?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -346,6 +363,7 @@ export interface Database {
       message_role: MessageRole;
       conflict_choice_selection: ConflictChoiceSelection;
       proactivity_frequency: ProactivityFrequency;
+      persona_tone: PersonaTone;
     };
     CompositeTypes: Record<string, never>;
   };

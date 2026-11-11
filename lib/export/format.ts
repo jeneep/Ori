@@ -52,6 +52,10 @@ export type ExportAllBundle = {
     constraints: string;
     proactivity_frequency: string;
     onboarding_completed: boolean;
+    ori_name: string;
+    persona_tone: string;
+    persona_custom_tone: string;
+    persona_guide_note: string;
     created_at: string;
     updated_at: string;
   };
@@ -144,10 +148,18 @@ export function allDataToMarkdown(bundle: ExportAllBundle): string {
     `- Email: ${bundle.profile.email ?? ""}`,
     `- Name: ${bundle.profile.full_name ?? ""}`,
     `- Proactivity: ${bundle.profile.proactivity_frequency}`,
+    `- Coach name: ${bundle.profile.ori_name}`,
+    `- Persona tone: ${bundle.profile.persona_tone}`,
+    bundle.profile.persona_custom_tone
+      ? `- Custom tone: ${bundle.profile.persona_custom_tone}`
+      : null,
+    bundle.profile.persona_guide_note
+      ? `- Guide note: ${bundle.profile.persona_guide_note}`
+      : null,
     "",
     "### Goals",
     "",
-  ];
+  ].filter((line): line is string => line !== null);
 
   if (bundle.profile.goals.length === 0) {
     lines.push("_No goals._", "");

@@ -41,10 +41,10 @@ export function DataControls({ accountEmail }: { accountEmail: string | null }) 
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-6">
-      <section className="rounded-lg border border-zinc-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-zinc-900">Your data</h2>
-        <p className="mt-2 text-sm text-zinc-600">
+    <div className="flex max-w-2xl flex-col gap-6">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-50">
+        <h2 className="text-lg font-medium tracking-tight">Your data</h2>
+        <p className="mt-2 text-sm text-zinc-400">
           You own your Ori data. Goals, constraints, topics, captures, messages,
           and experiments belong to you. Export anytime, and delete when you
           want it gone.
@@ -54,9 +54,11 @@ export function DataControls({ accountEmail }: { accountEmail: string | null }) 
         </div>
       </section>
 
-      <section className="rounded-lg border border-red-200 bg-red-50 p-5">
-        <h2 className="text-sm font-medium text-red-900">Delete account</h2>
-        <p className="mt-2 text-sm text-red-800">
+      <section className="rounded-xl border border-red-900/50 bg-red-950/30 p-6 text-red-50">
+        <h2 className="text-lg font-medium tracking-tight text-red-100">
+          Delete account
+        </h2>
+        <p className="mt-2 text-sm text-red-200/80">
           Permanently deletes your profile and all topics
           {accountEmail ? ` for ${accountEmail}` : ""}. This cannot be undone.
         </p>
@@ -65,24 +67,25 @@ export function DataControls({ accountEmail }: { accountEmail: string | null }) 
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="mt-4 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
+            className="mt-4 rounded-md border border-red-800/80 bg-zinc-950 px-3 py-1.5 text-sm font-medium text-red-200 transition hover:bg-red-950/60"
           >
             Delete account…
           </button>
         ) : (
           <div className="mt-4">
-            <p className="text-sm text-red-800">
-              Type <span className="font-semibold">{expected}</span> to confirm.
+            <p className="text-sm text-red-200/80">
+              Type <span className="font-semibold text-red-100">{expected}</span>{" "}
+              to confirm.
             </p>
             <input
               type="text"
               value={confirmationText}
               onChange={(e) => setConfirmationText(e.target.value)}
               placeholder={expected}
-              className="mt-2 w-full rounded-md border border-red-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-red-300 focus:ring-2"
+              className="mt-2 w-full rounded-md border border-red-900/60 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none ring-red-700 focus:ring-2"
             />
             {error ? (
-              <p className="mt-2 text-sm text-red-700" role="alert">
+              <p className="mt-2 text-sm text-red-200" role="alert">
                 {error}
               </p>
             ) : null}
@@ -103,7 +106,7 @@ export function DataControls({ accountEmail }: { accountEmail: string | null }) 
                   setConfirmationText("");
                   setError(null);
                 }}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700"
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm font-medium text-zinc-200"
               >
                 Cancel
               </button>

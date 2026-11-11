@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   generateCoachReply,
+  toUserModel,
   type CoachMessage,
-  type UserModel,
 } from "@/lib/llm/coach";
 import { isSubstantialCoachQuestion } from "@/lib/reasoning/substantial";
 import {
@@ -72,7 +72,9 @@ export async function POST(request: Request) {
   const [{ data: profile }, { data: topic }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("goals, constraints, proactivity_frequency, full_name")
+      .select(
+        "goals, constraints, proactivity_frequency, full_name, ori_name, persona_tone, persona_custom_tone, persona_guide_note"
+      )
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -143,12 +145,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const userModel: UserModel = {
-    goals: profile.goals,
-    constraints: profile.constraints,
-    proactivity_frequency: profile.proactivity_frequency,
-    full_name: profile.full_name,
-  };
+  const userModel = toUserModel(profile);
 
   const deeperReasoning = isSubstantialCoachQuestion(message);
   let reasoning: SyntheticReasoningResult | null = null;
