@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RefiningIndicator } from "@/components/reasoning/refining-indicator";
 
 export type CaptureTopicOption = {
   id: string;
@@ -30,6 +31,9 @@ export function CaptureForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [proposedView, setProposedView] = useState<string | null>(null);
+  const [acceptingView, setAcceptingView] = useState(false);
 
   const canSubmit = useMemo(() => {
     if (!topicId) return false;
@@ -37,10 +41,36 @@ export function CaptureForm({
     return Boolean(file);
   }, [topicId, mode, sourceUrl, file]);
 
+  async function acceptProposedView() {
+    if (!proposedView || !topicId || acceptingView) return;
+    setAcceptingView(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/topics/${topicId}/current-view`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentView: proposedView }),
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setError(payload.error ?? "Could not update current view.");
+        return;
+      }
+      setProposedView(null);
+      setSuccess("Captured content and updated the current view.");
+      router.refresh();
+    } catch {
+      setError("Could not update current view.");
+    } finally {
+      setAcceptingView(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+    setProposedView(null);
 
     if (!topicId) {
       setError("Select an existing topic.");
@@ -63,6 +93,7 @@ export function CaptureForm({
     }
 
     setLoading(true);
+    setRefining(true);
     try {
       const response = await fetch("/api/ingest", {
         method: "POST",
@@ -71,6 +102,9 @@ export function CaptureForm({
       const payload = (await response.json()) as {
         error?: string;
         content?: { title?: string | null };
+        currentViewUpdated?: boolean;
+        offerUpdateCurrentView?: boolean;
+        proposedCurrentView?: string | null;
       };
 
       if (!response.ok) {
@@ -78,7 +112,21 @@ export function CaptureForm({
         return;
       }
 
-      setSuccess(`Captured “${payload.content?.title ?? "content"}”.`);
+      const capturedTitle = payload.content?.title ?? "content";
+      if (payload.currentViewUpdated) {
+        setSuccess(
+          `Captured “${capturedTitle}”. Current view was lightly refined.`
+        );
+      } else if (
+        payload.offerUpdateCurrentView &&
+        payload.proposedCurrentView
+      ) {
+        setSuccess(`Captured “${capturedTitle}”.`);
+        setProposedView(payload.proposedCurrentView);
+      } else {
+        setSuccess(`Captured “${capturedTitle}”.`);
+      }
+
       setTitle("");
       setSourceUrl("");
       setFile(null);
@@ -88,6 +136,7 @@ export function CaptureForm({
       setError("Something went wrong while capturing content.");
     } finally {
       setLoading(false);
+      setRefining(false);
     }
   }
 
@@ -130,6 +179,7 @@ export function CaptureForm({
               setMode(value);
               setError(null);
               setSuccess(null);
+              setProposedView(null);
             }}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
               mode === value
@@ -209,12 +259,37 @@ export function CaptureForm({
         </p>
       ) : null}
 
+      <RefiningIndicator active={refining} />
+
+      {proposedView ? (
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Update current view?
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">
+            {proposedView}
+          </p>
+          <button
+            type="button"
+            onClick={() => void acceptProposedView()}
+            disabled={acceptingView}
+            className="mt-3 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+          >
+            {acceptingView ? "Updating…" : "Accept updated view"}
+          </button>
+        </div>
+      ) : null}
+
       <button
         type="submit"
         disabled={!canSubmit || loading}
         className="rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Capturing…" : "Capture content"}
+        {loading
+          ? refining
+            ? "Refining current view…"
+            : "Capturing…"
+          : "Capture content"}
       </button>
     </form>
   );

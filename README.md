@@ -63,6 +63,8 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 ### Coach chat
 - Topic page shows `current_view` and a chat that loads recent messages
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis
+- Substantial questions and new captures run a **synthetic reasoning** pass: retrieve relevant content + experiments + persona, compare reinforcements/conflicts/gaps, synthesize an updated understanding, then either auto-refine a small aligned `current_view` change or offer an update
+- UI shows a calm “Refining current view…” indicator during deeper reasoning
 - Important exchanges can offer a `current_view` update; chat can create experiment cards
 - Requires `GROK_API_KEY` (also accepts `XAI_API_KEY` or `Grok_key`) for xAI chat completions at `https://api.x.ai/v1`; otherwise the API returns an offline fallback and surfaces the provider error
 - Default model is `grok-4` (override with `GROK_MODEL` / `XAI_MODEL`)

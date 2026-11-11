@@ -141,6 +141,9 @@ export async function generateCoachReply(input: {
   content: CoachContentSnippet[];
   messages: CoachMessage[];
   userMessage: string;
+  /** Optional precomputed synthetic-reasoning context for richer replies. */
+  reasoningContext?: string | null;
+  experimentsSummary?: string | null;
 }): Promise<CoachLlmResult> {
   const fallback = {
     ...buildFallbackReply(input),
@@ -182,6 +185,7 @@ export async function generateCoachReply(input: {
           content: [
             "You are Ori, a thoughtful coaching partner.",
             "Stay consistent with the user's synthesized model (goals/constraints) and the topic's current_view.",
+            "When synthetic reasoning context is provided, use it: note reinforcements, conflicts, and gaps without being alarmist.",
             "Do not invent facts that contradict the current_view; if new info conflicts, note the tension and propose an updated current_view.",
             "Keep replies concise (2-5 short paragraphs max).",
             "Return JSON only with keys:",
@@ -203,6 +207,11 @@ export async function generateCoachReply(input: {
             input.currentView.trim() ||
               "(empty — synthesize carefully from available context)",
             "",
+            input.reasoningContext?.trim() || null,
+            input.experimentsSummary?.trim()
+              ? `Experiments:\n${input.experimentsSummary.trim()}`
+              : null,
+            "",
             "Recent relevant content:",
             contentBlock || "(none)",
             "",
@@ -211,7 +220,9 @@ export async function generateCoachReply(input: {
             "",
             "New user message:",
             input.userMessage,
-          ].join("\n"),
+          ]
+            .filter((line) => line !== null)
+            .join("\n"),
         },
       ],
     });

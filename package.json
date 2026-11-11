@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "smoke:coach-llm": "node scripts/coach-llm-smoke.mjs"
+    "smoke:coach-llm": "node scripts/coach-llm-smoke.mjs",
+    "smoke:reasoning": "node scripts/reasoning-smoke.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
