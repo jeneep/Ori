@@ -95,8 +95,10 @@ create table public.content (
   topic_id uuid not null references public.topics (id) on delete cascade,
   title text,
   body text not null,
+  source_url text,
+  summary text,
   content_type text not null default 'note'
-    check (content_type in ('note', 'document', 'summary', 'source')),
+    check (content_type in ('note', 'document', 'summary', 'source', 'link', 'file')),
   embedding extensions.vector(1536),
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),

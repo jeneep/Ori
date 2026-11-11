@@ -7,7 +7,13 @@ export type Json =
   | Json[];
 
 export type TopicStatus = "active" | "archived" | "resolved";
-export type ContentType = "note" | "document" | "summary" | "source";
+export type ContentType =
+  | "note"
+  | "document"
+  | "summary"
+  | "source"
+  | "link"
+  | "file";
 export type ExperimentStatus = "draft" | "running" | "completed" | "cancelled";
 export type MessageRole = "user" | "assistant" | "system";
 export type ConflictChoiceSelection = "a" | "b";
@@ -108,6 +114,8 @@ export interface Database {
           topic_id: string;
           title: string | null;
           body: string;
+          source_url: string | null;
+          summary: string | null;
           content_type: ContentType;
           embedding: number[] | null;
           metadata: Json;
@@ -120,6 +128,8 @@ export interface Database {
           topic_id: string;
           title?: string | null;
           body: string;
+          source_url?: string | null;
+          summary?: string | null;
           content_type?: ContentType;
           embedding?: number[] | null;
           metadata?: Json;
@@ -132,6 +142,8 @@ export interface Database {
           topic_id?: string;
           title?: string | null;
           body?: string;
+          source_url?: string | null;
+          summary?: string | null;
           content_type?: ContentType;
           embedding?: number[] | null;
           metadata?: Json;

@@ -55,6 +55,11 @@ All tables have RLS (own-row access). Indexes exist on `user_id` and `topic_id` 
 
 Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migration up`).
 
+### Content capture
+- `CaptureForm` accepts a pasted link or file upload and requires an existing topic
+- `POST /api/ingest` stores `title`, `source_url` or raw text (`body`), `content_type`, and an LLM `summary`
+- Topic pages at `/topics/[topicId]` list captured content
+
 ## Environment variables
 
 Copy `.env.local.example` to `.env.local` and set:

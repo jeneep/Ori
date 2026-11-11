@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CaptureForm } from "@/components/capture/capture-form";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
@@ -31,7 +32,10 @@ export default async function DashboardPage() {
         <div className="rounded-lg border border-zinc-200 bg-white p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-medium text-zinc-500">Goals</h2>
-            <Link href="/settings" className="text-xs font-medium text-zinc-700 underline-offset-4 hover:underline">
+            <Link
+              href="/settings"
+              className="text-xs font-medium text-zinc-700 underline-offset-4 hover:underline"
+            >
               Edit
             </Link>
           </div>
@@ -49,7 +53,10 @@ export default async function DashboardPage() {
         <div className="rounded-lg border border-zinc-200 bg-white p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-medium text-zinc-500">Constraints</h2>
-            <Link href="/settings" className="text-xs font-medium text-zinc-700 underline-offset-4 hover:underline">
+            <Link
+              href="/settings"
+              className="text-xs font-medium text-zinc-700 underline-offset-4 hover:underline"
+            >
               Edit
             </Link>
           </div>
@@ -71,7 +78,12 @@ export default async function DashboardPage() {
                 key={topic.id}
                 className="flex items-center justify-between gap-3 py-3 text-sm"
               >
-                <span className="font-medium text-zinc-900">{topic.title}</span>
+                <Link
+                  href={`/topics/${topic.id}`}
+                  className="font-medium text-zinc-900 underline-offset-4 hover:underline"
+                >
+                  {topic.title}
+                </Link>
                 <span className="text-xs uppercase tracking-wide text-zinc-500">
                   {topic.status}
                 </span>
@@ -81,6 +93,16 @@ export default async function DashboardPage() {
         ) : (
           <p className="mt-3 text-sm text-zinc-500">No topics yet.</p>
         )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <h2 className="text-sm font-medium text-zinc-500">Quick capture</h2>
+        <p className="mt-1 text-sm text-zinc-500">
+          Paste a link or upload a file into an existing topic.
+        </p>
+        <div className="mt-4">
+          <CaptureForm topics={topics ?? []} />
+        </div>
       </section>
     </div>
   );
