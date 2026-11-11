@@ -332,6 +332,11 @@ function buildFallbackReply(input: {
   content: CoachContentSnippet[];
   userMessage: string;
 }): Omit<CoachLlmResult, "provider" | "providerError"> {
+  const persona = buildPersonaFromUserModel({
+    ...DEFAULT_PERSONA_SETTINGS,
+    ...input.userModel,
+  });
+  const coach = persona.coachName;
   const goalHint = input.userModel.goals[0]
     ? ` Keeping your goal “${input.userModel.goals[0]}” in mind`
     : "";
@@ -342,8 +347,16 @@ function buildFallbackReply(input: {
     input.content[0]?.summary || input.content[0]?.title
       ? ` Recent material worth weighing: ${input.content[0].summary || input.content[0].title}.`
       : "";
+  const guideHint = persona.guideNote
+    ? ` I’ll keep orienting toward ${persona.guideNote}.`
+    : "";
 
-  const reply = `Thanks for sharing that about “${input.topicTitle}”.${goalHint}.${viewHint}${contentHint} What feels like the next smallest useful move?`;
+  const reply =
+    persona.tone === "direct_coach"
+      ? `${coach} here — thanks for naming that about “${input.topicTitle}”.${goalHint}.${viewHint}${contentHint}${guideHint} What’s the clearest next move you can take this week?`
+      : persona.tone === "wise_friend"
+        ? `${coach} here. Thanks for sharing that about “${input.topicTitle}”.${goalHint}.${viewHint}${contentHint}${guideHint} What feels true enough to try next, without rushing?`
+        : `${coach} here. Thanks for sharing that about “${input.topicTitle}”.${goalHint}.${viewHint}${contentHint}${guideHint} What feels like the next smallest useful move?`;
 
   const important =
     input.userMessage.length > 160 ||

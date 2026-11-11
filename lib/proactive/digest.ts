@@ -499,7 +499,7 @@ export function buildCheckInCardModel(input: {
 
   if (frequency === "off") {
     label = "Check-in";
-    statusLine = "Digests are off — Ori stays quiet unless you ask.";
+    statusLine = `Digests are off — ${coach} stays quiet unless you ask.`;
   } else if (due) {
     label = "Next digest";
     statusLine = `${coach} has a light digest ready when you are.`;
@@ -519,6 +519,7 @@ export function buildCheckInCardModel(input: {
   return {
     label,
     statusLine,
+    coachName: coach,
     frequency,
     due,
     nextDigestAt,

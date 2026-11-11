@@ -84,6 +84,7 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - Default model is `grok-4` (override with `GROK_MODEL` / `XAI_MODEL`)
 - `GET /api/coach/health` probes Grok chat completions so bad/missing keys are reported as not ready
 - `npm run smoke:coach-llm` exercises the Grok coach JSON path without Supabase
+- `npm run smoke:persona-proactivity` verifies persona prompt injection, digest frequency/muting, and a Grok-polished sample digest that skips muted topics
 
 ### Export + deletion
 - Export a topic or all account data as Markdown or JSON (`GET /api/export`)
