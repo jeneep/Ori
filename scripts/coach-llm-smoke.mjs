@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Direct smoke test for the coach OpenAI path (mirrors lib/llm/coach.ts).
- * Requires OPENAI_API_KEY. No Supabase required.
+ * Direct smoke test for the coach Grok/xAI path (mirrors lib/llm/coach.ts).
+ * Requires GROK_API_KEY or XAI_API_KEY. No Supabase required.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -22,17 +22,21 @@ function loadEnvLocal() {
 
 loadEnvLocal();
 
-const apiKey = process.env.OPENAI_API_KEY?.trim();
+const apiKey =
+  process.env.GROK_API_KEY?.trim() || process.env.XAI_API_KEY?.trim();
 if (!apiKey) {
-  console.error("FAIL: OPENAI_API_KEY missing");
+  console.error("FAIL: GROK_API_KEY or XAI_API_KEY missing");
   process.exit(1);
 }
 
-const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const model =
+  process.env.GROK_MODEL?.trim() ||
+  process.env.XAI_MODEL?.trim() ||
+  "grok-4";
 const userMessage =
   "I'm stuck deciding whether to raise the workload issue in our next 1:1. What should I consider?";
 
-const response = await fetch("https://api.openai.com/v1/chat/completions", {
+const response = await fetch("https://api.x.ai/v1/chat/completions", {
   method: "POST",
   headers: {
     Authorization: `Bearer ${apiKey}`,
@@ -87,7 +91,7 @@ const response = await fetch("https://api.openai.com/v1/chat/completions", {
 
 if (!response.ok) {
   const body = await response.text();
-  let detail = `OpenAI HTTP ${response.status}`;
+  let detail = `Grok/xAI HTTP ${response.status}`;
   try {
     const parsed = JSON.parse(body);
     if (parsed?.error?.message) detail = parsed.error.message;
@@ -102,14 +106,14 @@ if (!response.ok) {
       2
     )
   );
-  console.error("FAIL: OpenAI chat completions did not succeed");
+  console.error("FAIL: Grok chat completions did not succeed");
   process.exit(1);
 }
 
 const data = await response.json();
 const raw = data.choices?.[0]?.message?.content?.trim();
 if (!raw) {
-  console.error("FAIL: OpenAI returned empty content");
+  console.error("FAIL: Grok returned empty content");
   process.exit(1);
 }
 
@@ -117,7 +121,7 @@ let parsed;
 try {
   parsed = JSON.parse(raw);
 } catch {
-  console.error("FAIL: OpenAI returned non-JSON:", raw.slice(0, 200));
+  console.error("FAIL: Grok returned non-JSON:", raw.slice(0, 200));
   process.exit(1);
 }
 
@@ -129,7 +133,7 @@ if (typeof parsed.reply !== "string" || !parsed.reply.trim()) {
 console.log(
   JSON.stringify(
     {
-      provider: "openai",
+      provider: "grok",
       providerError: null,
       model,
       replyPreview: parsed.reply.slice(0, 220).replace(/\s+/g, " "),
@@ -140,4 +144,4 @@ console.log(
     2
   )
 );
-console.log("PASS: coach OpenAI reply generated");
+console.log("PASS: coach Grok reply generated");

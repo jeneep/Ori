@@ -73,7 +73,7 @@ export function TopicChat({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [providerNote, setProviderNote] = useState<string | null>(null);
-  const [openaiReady, setOpenaiReady] = useState<boolean | null>(null);
+  const [grokReady, setGrokReady] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [updatingViewFor, setUpdatingViewFor] = useState<string | null>(null);
   const [creatingExperimentFor, setCreatingExperimentFor] = useState<
@@ -86,7 +86,7 @@ export function TopicChat({
   useEffect(() => {
     let cancelled = false;
 
-    async function checkOpenAI() {
+    async function checkGrok() {
       try {
         const response = await fetch("/api/coach/health");
         const payload = (await response.json()) as {
@@ -95,29 +95,29 @@ export function TopicChat({
         };
         if (cancelled) return;
         if (!response.ok) {
-          setOpenaiReady(false);
+          setGrokReady(false);
           setProviderNote(
-            payload.error ?? "Could not verify OpenAI coach access."
+            payload.error ?? "Could not verify Grok coach access."
           );
           return;
         }
-        setOpenaiReady(Boolean(payload.ok));
+        setGrokReady(Boolean(payload.ok));
         if (payload.ok) {
-          setProviderNote("OpenAI coach is ready.");
+          setProviderNote("Grok coach is ready.");
         } else if (payload.error) {
           setProviderNote(payload.error);
         } else {
-          setProviderNote("OpenAI coach is not ready.");
+          setProviderNote("Grok coach is not ready.");
         }
       } catch {
         if (!cancelled) {
-          setOpenaiReady(false);
-          setProviderNote("Could not verify OpenAI coach access.");
+          setGrokReady(false);
+          setProviderNote("Could not verify Grok coach access.");
         }
       }
     }
 
-    void checkOpenAI();
+    void checkGrok();
     return () => {
       cancelled = true;
     };
@@ -150,7 +150,7 @@ export function TopicChat({
       const payload = (await response.json()) as {
         error?: string;
         messages?: ChatMessage[];
-        provider?: "openai" | "fallback";
+        provider?: "grok" | "fallback";
         providerError?: string | null;
       };
 
@@ -160,14 +160,14 @@ export function TopicChat({
         return;
       }
 
-      if (payload.provider === "openai") {
-        setOpenaiReady(true);
-        setProviderNote("Reply generated with OpenAI.");
+      if (payload.provider === "grok") {
+        setGrokReady(true);
+        setProviderNote("Reply generated with Grok.");
       } else if (payload.providerError) {
-        setOpenaiReady(false);
+        setGrokReady(false);
         setProviderNote(`Used offline fallback — ${payload.providerError}`);
       } else {
-        setOpenaiReady(false);
+        setGrokReady(false);
         setProviderNote("Used offline fallback.");
       }
 
@@ -364,7 +364,7 @@ export function TopicChat({
         {providerNote ? (
           <p
             className={`text-xs ${
-              openaiReady === false ? "text-amber-700" : "text-zinc-500"
+              grokReady === false ? "text-amber-700" : "text-zinc-500"
             }`}
             role="status"
           >
