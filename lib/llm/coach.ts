@@ -37,6 +37,123 @@ export type CoachLlmResult = {
 const MAX_CONTENT_SNIPPETS = 6;
 const MAX_MESSAGES = 12;
 
+export function getOpenAICoachModel(): string {
+  return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+}
+
+export function formatOpenAIProviderError(detail: string): string {
+  const lower = detail.toLowerCase();
+  if (
+    lower.includes("credit_balance_exhausted") ||
+    lower.includes("no credits remaining") ||
+    lower.includes("insufficient_quota")
+  ) {
+    return "OpenAI has no credits remaining. Add billing credits at platform.openai.com, then retry.";
+  }
+  if (lower.includes("incorrect api key") || lower.includes("invalid_api_key")) {
+    return "OPENAI_API_KEY is invalid. Update the secret and retry.";
+  }
+  return detail;
+}
+
+/** Lightweight chat-completions probe — models list can succeed even with zero credits. */
+export async function probeOpenAICoachAccess(): Promise<{
+  ok: boolean;
+  openaiConfigured: boolean;
+  model: string;
+  error: string | null;
+}> {
+  const model = getOpenAICoachModel();
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (!apiKey) {
+    return {
+      ok: false,
+      openaiConfigured: false,
+      model,
+      error: "OPENAI_API_KEY is not set in this runtime.",
+    };
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        max_tokens: 40,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              'Return JSON only: {"reply":"ok","important":false,"proposed_current_view":null,"experiment":null}',
+          },
+          {
+            role: "user",
+            content: "Health check. Reply with reply=\"ok\".",
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      let detail = `OpenAI HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(errorBody) as {
+          error?: { message?: string; code?: string };
+        };
+        if (parsed.error?.message) {
+          detail = parsed.error.message;
+          if (parsed.error.code) detail += ` (${parsed.error.code})`;
+        }
+      } catch {
+        if (errorBody) detail = errorBody.slice(0, 300);
+      }
+      return {
+        ok: false,
+        openaiConfigured: true,
+        model,
+        error: formatOpenAIProviderError(detail),
+      };
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      return {
+        ok: false,
+        openaiConfigured: true,
+        model,
+        error: "OpenAI returned an empty health-check response.",
+      };
+    }
+
+    return {
+      ok: true,
+      openaiConfigured: true,
+      model,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      openaiConfigured: true,
+      model,
+      error: formatOpenAIProviderError(
+        error instanceof Error ? error.message : "OpenAI request failed."
+      ),
+    };
+  }
+}
+
 export function buildUserModelSummary(model: UserModel): string {
   const goals =
     model.goals.length > 0
@@ -98,7 +215,7 @@ export async function generateCoachReply(input: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+        model: getOpenAICoachModel(),
         temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
@@ -147,17 +264,18 @@ export async function generateCoachReply(input: {
       let detail = `OpenAI HTTP ${response.status}`;
       try {
         const parsed = JSON.parse(errorBody) as {
-          error?: { message?: string };
+          error?: { message?: string; code?: string };
         };
         if (parsed.error?.message) {
           detail = parsed.error.message;
+          if (parsed.error.code) detail += ` (${parsed.error.code})`;
         }
       } catch {
         if (errorBody) detail = errorBody.slice(0, 300);
       }
       return {
         ...fallback,
-        providerError: detail,
+        providerError: formatOpenAIProviderError(detail),
       };
     }
 
@@ -181,8 +299,9 @@ export async function generateCoachReply(input: {
   } catch (error) {
     return {
       ...fallback,
-      providerError:
-        error instanceof Error ? error.message : "OpenAI request failed.",
+      providerError: formatOpenAIProviderError(
+        error instanceof Error ? error.message : "OpenAI request failed."
+      ),
     };
   }
 }
