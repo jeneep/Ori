@@ -64,6 +64,9 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - Topic page shows `current_view` and a chat that loads recent messages
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis
 - Important exchanges can offer a `current_view` update; chat can create experiment cards
+- Requires `OPENAI_API_KEY` with available OpenAI billing credits; otherwise the API returns an offline fallback and surfaces the provider error
+- `GET /api/coach/health` probes chat completions (not just model listing) so zero-credit keys are reported as not ready
+- `npm run smoke:coach-llm` exercises the OpenAI coach JSON path without Supabase
 
 ### Export + deletion
 - Export a topic or all account data as Markdown or JSON (`GET /api/export`)

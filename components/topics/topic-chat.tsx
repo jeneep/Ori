@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Json } from "@/types/database";
 
@@ -73,6 +73,7 @@ export function TopicChat({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [providerNote, setProviderNote] = useState<string | null>(null);
+  const [openaiReady, setOpenaiReady] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [updatingViewFor, setUpdatingViewFor] = useState<string | null>(null);
   const [creatingExperimentFor, setCreatingExperimentFor] = useState<
@@ -81,6 +82,46 @@ export function TopicChat({
   const [statusByMessage, setStatusByMessage] = useState<Record<string, string>>(
     {}
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkOpenAI() {
+      try {
+        const response = await fetch("/api/coach/health");
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!response.ok) {
+          setOpenaiReady(false);
+          setProviderNote(
+            payload.error ?? "Could not verify OpenAI coach access."
+          );
+          return;
+        }
+        setOpenaiReady(Boolean(payload.ok));
+        if (payload.ok) {
+          setProviderNote("OpenAI coach is ready.");
+        } else if (payload.error) {
+          setProviderNote(payload.error);
+        } else {
+          setProviderNote("OpenAI coach is not ready.");
+        }
+      } catch {
+        if (!cancelled) {
+          setOpenaiReady(false);
+          setProviderNote("Could not verify OpenAI coach access.");
+        }
+      }
+    }
+
+    void checkOpenAI();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const sortedMessages = useMemo(
     () =>
@@ -120,10 +161,13 @@ export function TopicChat({
       }
 
       if (payload.provider === "openai") {
+        setOpenaiReady(true);
         setProviderNote("Reply generated with OpenAI.");
       } else if (payload.providerError) {
-        setProviderNote(`Used offline fallback (${payload.providerError})`);
+        setOpenaiReady(false);
+        setProviderNote(`Used offline fallback — ${payload.providerError}`);
       } else {
+        setOpenaiReady(false);
         setProviderNote("Used offline fallback.");
       }
 
@@ -318,7 +362,12 @@ export function TopicChat({
           </p>
         ) : null}
         {providerNote ? (
-          <p className="text-xs text-zinc-500" role="status">
+          <p
+            className={`text-xs ${
+              openaiReady === false ? "text-amber-700" : "text-zinc-500"
+            }`}
+            role="status"
+          >
             {providerNote}
           </p>
         ) : null}
