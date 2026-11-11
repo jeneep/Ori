@@ -68,7 +68,8 @@ export async function probeGrokCoachAccess(): Promise<{
       ok: false,
       grokConfigured: false,
       model,
-      error: "GROK_API_KEY or XAI_API_KEY is not set in this runtime.",
+      error:
+        "GROK_API_KEY, XAI_API_KEY, or Grok_key is not set in this runtime.",
     };
   }
 
@@ -150,7 +151,8 @@ export async function generateCoachReply(input: {
   if (!getGrokApiKey()) {
     return {
       ...fallback,
-      providerError: "GROK_API_KEY or XAI_API_KEY is not set in this runtime.",
+      providerError:
+        "GROK_API_KEY, XAI_API_KEY, or Grok_key is not set in this runtime.",
     };
   }
 

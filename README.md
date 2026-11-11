@@ -64,7 +64,7 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - Topic page shows `current_view` and a chat that loads recent messages
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis
 - Important exchanges can offer a `current_view` update; chat can create experiment cards
-- Requires `GROK_API_KEY` or `XAI_API_KEY` (xAI chat completions at `https://api.x.ai/v1`); otherwise the API returns an offline fallback and surfaces the provider error
+- Requires `GROK_API_KEY` (also accepts `XAI_API_KEY` or `Grok_key`) for xAI chat completions at `https://api.x.ai/v1`; otherwise the API returns an offline fallback and surfaces the provider error
 - Default model is `grok-4` (override with `GROK_MODEL` / `XAI_MODEL`)
 - `GET /api/coach/health` probes Grok chat completions so bad/missing keys are reported as not ready
 - `npm run smoke:coach-llm` exercises the Grok coach JSON path without Supabase
