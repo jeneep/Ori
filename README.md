@@ -64,9 +64,10 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - Topic page shows `current_view` and a chat that loads recent messages
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis
 - Important exchanges can offer a `current_view` update; chat can create experiment cards
-- Requires `OPENAI_API_KEY` with available OpenAI billing credits; otherwise the API returns an offline fallback and surfaces the provider error
-- `GET /api/coach/health` probes chat completions (not just model listing) so zero-credit keys are reported as not ready
-- `npm run smoke:coach-llm` exercises the OpenAI coach JSON path without Supabase
+- Requires `GROK_API_KEY` or `XAI_API_KEY` (xAI chat completions at `https://api.x.ai/v1`); otherwise the API returns an offline fallback and surfaces the provider error
+- Default model is `grok-4` (override with `GROK_MODEL` / `XAI_MODEL`)
+- `GET /api/coach/health` probes Grok chat completions so bad/missing keys are reported as not ready
+- `npm run smoke:coach-llm` exercises the Grok coach JSON path without Supabase
 
 ### Export + deletion
 - Export a topic or all account data as Markdown or JSON (`GET /api/export`)
@@ -81,9 +82,10 @@ Copy `.env.local.example` to `.env.local` and set:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+GROK_API_KEY=your-grok-api-key
 ```
 
-Values are in **Supabase Dashboard → Project Settings → API**.
+Supabase values are in **Supabase Dashboard → Project Settings → API**. Create a Grok/xAI key in the [xAI console](https://console.x.ai/).
 
 ## Getting started
 

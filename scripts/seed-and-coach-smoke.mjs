@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
  * Smoke test: create a confirmed user via service role (no email send),
- * complete onboarding data, call OpenAI-backed coach generation logic path.
+ * complete onboarding data, call Grok/xAI-backed coach generation logic path.
  *
  * Requires in env:
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
- *   OPENAI_API_KEY
+ *   GROK_API_KEY or XAI_API_KEY
  */
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
@@ -30,7 +30,8 @@ loadEnvLocal();
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const openaiKey = process.env.OPENAI_API_KEY;
+const grokKey =
+  process.env.GROK_API_KEY?.trim() || process.env.XAI_API_KEY?.trim();
 
 function fail(message) {
   console.error(`FAIL: ${message}`);
@@ -39,7 +40,7 @@ function fail(message) {
 
 if (!url) fail("NEXT_PUBLIC_SUPABASE_URL missing");
 if (!serviceKey) fail("SUPABASE_SERVICE_ROLE_KEY missing");
-if (!openaiKey) fail("OPENAI_API_KEY missing");
+if (!grokKey) fail("GROK_API_KEY or XAI_API_KEY missing");
 
 const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -88,14 +89,19 @@ const { data: topic, error: topicError } = await admin
 if (topicError || !topic) fail(`topic insert: ${topicError?.message ?? "unknown"}`);
 console.log(`created topic ${topic.id}`);
 
-const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+const model =
+  process.env.GROK_MODEL?.trim() ||
+  process.env.XAI_MODEL?.trim() ||
+  "grok-4";
+
+const grokResponse = await fetch("https://api.x.ai/v1/chat/completions", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${openaiKey}`,
+    Authorization: `Bearer ${grokKey}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    model,
     temperature: 0.2,
     response_format: { type: "json_object" },
     messages: [
@@ -113,24 +119,24 @@ const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions",
   }),
 });
 
-if (!openaiResponse.ok) {
-  const body = await openaiResponse.text();
-  fail(`OpenAI HTTP ${openaiResponse.status}: ${body.slice(0, 400)}`);
+if (!grokResponse.ok) {
+  const body = await grokResponse.text();
+  fail(`Grok/xAI HTTP ${grokResponse.status}: ${body.slice(0, 400)}`);
 }
 
-const openaiJson = await openaiResponse.json();
-const raw = openaiJson.choices?.[0]?.message?.content;
-if (!raw) fail("OpenAI empty content");
+const grokJson = await grokResponse.json();
+const raw = grokJson.choices?.[0]?.message?.content;
+if (!raw) fail("Grok empty content");
 
 let parsed;
 try {
   parsed = JSON.parse(raw);
 } catch {
-  fail(`OpenAI non-JSON: ${raw.slice(0, 200)}`);
+  fail(`Grok non-JSON: ${raw.slice(0, 200)}`);
 }
 
 if (typeof parsed.reply !== "string" || !parsed.reply.trim()) {
-  fail("OpenAI JSON missing reply");
+  fail("Grok JSON missing reply");
 }
 
 const { error: messageError } = await admin.from("messages").insert([
@@ -149,7 +155,7 @@ const { error: messageError } = await admin.from("messages").insert([
     content: parsed.reply,
     metadata: {
       source: "smoke",
-      provider: "openai",
+      provider: "grok",
       important: Boolean(parsed.important),
       proposed_current_view: parsed.proposed_current_view ?? null,
       experiment: parsed.experiment ?? null,
@@ -159,8 +165,9 @@ const { error: messageError } = await admin.from("messages").insert([
 
 if (messageError) fail(`message insert: ${messageError.message}`);
 
-console.log("PASS: OpenAI coach reply generated and stored");
+console.log("PASS: Grok coach reply generated and stored");
 console.log(`topicId=${topic.id}`);
 console.log(`email=${email}`);
 console.log(`password=${password}`);
+console.log(`model=${model}`);
 console.log(`replyPreview=${parsed.reply.slice(0, 180).replace(/\s+/g, " ")}`);

@@ -1,4 +1,11 @@
 import type { ProactivityFrequency } from "@/types/database";
+import {
+  callGrokChatCompletions,
+  formatGrokProviderError,
+  getGrokApiKey,
+  getGrokModel,
+  readChatCompletionContent,
+} from "@/lib/llm/xai";
 
 export type UserModel = {
   goals: string[];
@@ -30,128 +37,84 @@ export type CoachLlmResult = {
   important: boolean;
   proposed_current_view: string | null;
   experiment: CoachExperimentSuggestion | null;
-  provider: "openai" | "fallback";
+  /** "grok" when xAI succeeded; "fallback" for offline template replies. */
+  provider: "grok" | "fallback";
   providerError: string | null;
 };
 
 const MAX_CONTENT_SNIPPETS = 6;
 const MAX_MESSAGES = 12;
 
-export function getOpenAICoachModel(): string {
-  return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+export function getCoachModel(): string {
+  return getGrokModel();
 }
 
-export function formatOpenAIProviderError(detail: string): string {
-  const lower = detail.toLowerCase();
-  if (
-    lower.includes("credit_balance_exhausted") ||
-    lower.includes("no credits remaining") ||
-    lower.includes("insufficient_quota")
-  ) {
-    return "OpenAI has no credits remaining. Add billing credits at platform.openai.com, then retry.";
-  }
-  if (lower.includes("incorrect api key") || lower.includes("invalid_api_key")) {
-    return "OPENAI_API_KEY is invalid. Update the secret and retry.";
-  }
-  return detail;
+export function formatCoachProviderError(detail: string): string {
+  return formatGrokProviderError(detail);
 }
 
-/** Lightweight chat-completions probe — models list can succeed even with zero credits. */
-export async function probeOpenAICoachAccess(): Promise<{
+/** Lightweight chat-completions probe against the Grok / xAI API. */
+export async function probeGrokCoachAccess(): Promise<{
   ok: boolean;
-  openaiConfigured: boolean;
+  grokConfigured: boolean;
   model: string;
   error: string | null;
 }> {
-  const model = getOpenAICoachModel();
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const model = getGrokModel();
+  const apiKey = getGrokApiKey();
 
   if (!apiKey) {
     return {
       ok: false,
-      openaiConfigured: false,
+      grokConfigured: false,
       model,
-      error: "OPENAI_API_KEY is not set in this runtime.",
+      error: "GROK_API_KEY or XAI_API_KEY is not set in this runtime.",
     };
   }
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+  const result = await callGrokChatCompletions({
+    model,
+    temperature: 0,
+    max_tokens: 40,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          'Return JSON only: {"reply":"ok","important":false,"proposed_current_view":null,"experiment":null}',
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        max_tokens: 40,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              'Return JSON only: {"reply":"ok","important":false,"proposed_current_view":null,"experiment":null}',
-          },
-          {
-            role: "user",
-            content: "Health check. Reply with reply=\"ok\".",
-          },
-        ],
-      }),
-    });
+      {
+        role: "user",
+        content: 'Health check. Reply with reply="ok".',
+      },
+    ],
+  });
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      let detail = `OpenAI HTTP ${response.status}`;
-      try {
-        const parsed = JSON.parse(errorBody) as {
-          error?: { message?: string; code?: string };
-        };
-        if (parsed.error?.message) {
-          detail = parsed.error.message;
-          if (parsed.error.code) detail += ` (${parsed.error.code})`;
-        }
-      } catch {
-        if (errorBody) detail = errorBody.slice(0, 300);
-      }
-      return {
-        ok: false,
-        openaiConfigured: true,
-        model,
-        error: formatOpenAIProviderError(detail),
-      };
-    }
-
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const raw = data.choices?.[0]?.message?.content?.trim();
-    if (!raw) {
-      return {
-        ok: false,
-        openaiConfigured: true,
-        model,
-        error: "OpenAI returned an empty health-check response.",
-      };
-    }
-
-    return {
-      ok: true,
-      openaiConfigured: true,
-      model,
-      error: null,
-    };
-  } catch (error) {
+  if (!result.ok) {
     return {
       ok: false,
-      openaiConfigured: true,
+      grokConfigured: true,
       model,
-      error: formatOpenAIProviderError(
-        error instanceof Error ? error.message : "OpenAI request failed."
-      ),
+      error: result.errorDetail,
     };
   }
+
+  const raw = readChatCompletionContent(result.data);
+  if (!raw) {
+    return {
+      ok: false,
+      grokConfigured: true,
+      model,
+      error: "Grok returned an empty health-check response.",
+    };
+  }
+
+  return {
+    ok: true,
+    grokConfigured: true,
+    model,
+    error: null,
+  };
 }
 
 export function buildUserModelSummary(model: UserModel): string {
@@ -183,12 +146,11 @@ export async function generateCoachReply(input: {
     provider: "fallback" as const,
     providerError: null as string | null,
   };
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
 
-  if (!apiKey) {
+  if (!getGrokApiKey()) {
     return {
       ...fallback,
-      providerError: "OPENAI_API_KEY is not set in this runtime.",
+      providerError: "GROK_API_KEY or XAI_API_KEY is not set in this runtime.",
     };
   }
 
@@ -208,99 +170,76 @@ export async function generateCoachReply(input: {
     .join("\n\n");
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: getOpenAICoachModel(),
-        temperature: 0.4,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: [
-              "You are Ori, a thoughtful coaching partner.",
-              "Stay consistent with the user's synthesized model (goals/constraints) and the topic's current_view.",
-              "Do not invent facts that contradict the current_view; if new info conflicts, note the tension and propose an updated current_view.",
-              "Keep replies concise (2-5 short paragraphs max).",
-              "Return JSON only with keys:",
-              'reply (string), important (boolean), proposed_current_view (string|null), experiment ({name, hypothesis}|null).',
-              "Set important=true when the exchange clarified stakes, decisions, conflicts, or new durable understanding.",
-              "When important=true, proposed_current_view should be an updated 2-5 sentence synthesis of the topic.",
-              "Include experiment when a concrete small test would help; otherwise null.",
-            ].join(" "),
-          },
-          {
-            role: "user",
-            content: [
-              `Topic: ${input.topicTitle}`,
-              "",
-              "User model:",
-              buildUserModelSummary(input.userModel),
-              "",
-              "Current view:",
-              input.currentView.trim() ||
-                "(empty — synthesize carefully from available context)",
-              "",
-              "Recent relevant content:",
-              contentBlock || "(none)",
-              "",
-              "Recent messages:",
-              history || "(none)",
-              "",
-              "New user message:",
-              input.userMessage,
-            ].join("\n"),
-          },
-        ],
-      }),
+    const result = await callGrokChatCompletions({
+      model: getGrokModel(),
+      temperature: 0.4,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You are Ori, a thoughtful coaching partner.",
+            "Stay consistent with the user's synthesized model (goals/constraints) and the topic's current_view.",
+            "Do not invent facts that contradict the current_view; if new info conflicts, note the tension and propose an updated current_view.",
+            "Keep replies concise (2-5 short paragraphs max).",
+            "Return JSON only with keys:",
+            "reply (string), important (boolean), proposed_current_view (string|null), experiment ({name, hypothesis}|null).",
+            "Set important=true when the exchange clarified stakes, decisions, conflicts, or new durable understanding.",
+            "When important=true, proposed_current_view should be an updated 2-5 sentence synthesis of the topic.",
+            "Include experiment when a concrete small test would help; otherwise null.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: [
+            `Topic: ${input.topicTitle}`,
+            "",
+            "User model:",
+            buildUserModelSummary(input.userModel),
+            "",
+            "Current view:",
+            input.currentView.trim() ||
+              "(empty — synthesize carefully from available context)",
+            "",
+            "Recent relevant content:",
+            contentBlock || "(none)",
+            "",
+            "Recent messages:",
+            history || "(none)",
+            "",
+            "New user message:",
+            input.userMessage,
+          ].join("\n"),
+        },
+      ],
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      let detail = `OpenAI HTTP ${response.status}`;
-      try {
-        const parsed = JSON.parse(errorBody) as {
-          error?: { message?: string; code?: string };
-        };
-        if (parsed.error?.message) {
-          detail = parsed.error.message;
-          if (parsed.error.code) detail += ` (${parsed.error.code})`;
-        }
-      } catch {
-        if (errorBody) detail = errorBody.slice(0, 300);
-      }
+    if (!result.ok) {
       return {
         ...fallback,
-        providerError: formatOpenAIProviderError(detail),
+        providerError: result.errorDetail,
       };
     }
 
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const raw = data.choices?.[0]?.message?.content?.trim();
+    const raw = readChatCompletionContent(result.data);
     if (!raw) {
       return {
         ...fallback,
-        providerError: "OpenAI returned an empty response.",
+        providerError: "Grok returned an empty response.",
       };
     }
 
     const normalized = normalizeCoachResult(JSON.parse(raw), fallback.reply);
     return {
       ...normalized,
-      provider: "openai",
+      provider: "grok",
       providerError: null,
     };
   } catch (error) {
     return {
       ...fallback,
-      providerError: formatOpenAIProviderError(
-        error instanceof Error ? error.message : "OpenAI request failed."
+      providerError: formatGrokProviderError(
+        error instanceof Error ? error.message : "Grok/xAI request failed."
       ),
     };
   }
