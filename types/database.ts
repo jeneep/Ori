@@ -75,6 +75,7 @@ export interface Database {
           user_id: string;
           title: string;
           description: string | null;
+          current_view: string;
           status: TopicStatus;
           created_at: string;
           updated_at: string;
@@ -84,6 +85,7 @@ export interface Database {
           user_id: string;
           title: string;
           description?: string | null;
+          current_view?: string;
           status?: TopicStatus;
           created_at?: string;
           updated_at?: string;
@@ -93,6 +95,7 @@ export interface Database {
           user_id?: string;
           title?: string;
           description?: string | null;
+          current_view?: string;
           status?: TopicStatus;
           created_at?: string;
           updated_at?: string;

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CaptureForm } from "@/components/capture/capture-form";
+import { ExperimentCards } from "@/components/topics/experiment-cards";
+import { TopicChat } from "@/components/topics/topic-chat";
 import { createClient } from "@/lib/supabase/server";
 
 type TopicPageProps = {
@@ -17,28 +19,46 @@ export default async function TopicPage({ params }: TopicPageProps) {
     redirect("/login");
   }
 
-  const [{ data: topic }, { data: topics }, { data: contentItems }] =
-    await Promise.all([
-      supabase
-        .from("topics")
-        .select("id, title, description, status, created_at")
-        .eq("id", params.topicId)
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("topics")
-        .select("id, title")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("content")
-        .select(
-          "id, title, body, source_url, summary, content_type, created_at"
-        )
-        .eq("topic_id", params.topicId)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: topic },
+    { data: topics },
+    { data: contentItems },
+    { data: messages },
+    { data: experiments },
+  ] = await Promise.all([
+    supabase
+      .from("topics")
+      .select("id, title, description, status, current_view, created_at")
+      .eq("id", params.topicId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("topics")
+      .select("id, title")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("content")
+      .select(
+        "id, title, body, source_url, summary, content_type, created_at"
+      )
+      .eq("topic_id", params.topicId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("messages")
+      .select("id, role, content, created_at, metadata")
+      .eq("topic_id", params.topicId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(40),
+    supabase
+      .from("experiments")
+      .select("id, name, hypothesis, status, created_at")
+      .eq("topic_id", params.topicId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!topic) {
     notFound();
@@ -60,18 +80,33 @@ export default async function TopicPage({ params }: TopicPageProps) {
           <p className="mt-1 text-sm text-zinc-500">{topic.description}</p>
         ) : (
           <p className="mt-1 text-sm text-zinc-500">
-            Capture links or files into this topic.
+            Capture context, refine the current view, and run small experiments.
           </p>
         )}
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <h2 className="text-sm font-medium text-zinc-500">Coach chat</h2>
+        <div className="mt-4">
+          <TopicChat
+            topicId={topic.id}
+            initialCurrentView={topic.current_view}
+            initialMessages={messages ?? []}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <h2 className="text-sm font-medium text-zinc-500">Experiments</h2>
+        <div className="mt-4">
+          <ExperimentCards experiments={experiments ?? []} />
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6">
         <h2 className="text-sm font-medium text-zinc-500">Capture</h2>
         <div className="mt-4">
-          <CaptureForm
-            topics={topics ?? []}
-            defaultTopicId={topic.id}
-          />
+          <CaptureForm topics={topics ?? []} defaultTopicId={topic.id} />
         </div>
       </section>
 

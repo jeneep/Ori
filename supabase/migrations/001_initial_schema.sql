@@ -74,6 +74,7 @@ create table public.topics (
   user_id uuid not null references public.profiles (id) on delete cascade,
   title text not null,
   description text,
+  current_view text not null default '',
   status text not null default 'active'
     check (status in ('active', 'archived', 'resolved')),
   created_at timestamptz not null default timezone('utc', now()),
