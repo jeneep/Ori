@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { updateSettings, type SettingsState } from "@/lib/actions/settings";
 import {
+  TopicMuteList,
+  type MuteTopicRow,
+} from "@/components/settings/topic-mute-list";
+import {
   buildPersonaPreview,
   normalizePersonaSettings,
   PERSONA_TONE_OPTIONS,
@@ -40,7 +44,13 @@ function fieldClassName() {
   return "rounded-md border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 outline-none ring-zinc-500 placeholder:text-zinc-500 focus:ring-2";
 }
 
-export function SettingsForm({ profile }: { profile: Profile }) {
+export function SettingsForm({
+  profile,
+  topics = [],
+}: {
+  profile: Profile;
+  topics?: MuteTopicRow[];
+}) {
   const [state, formAction] = useFormState(updateSettings, initialState);
   const goals = [...profile.goals, "", "", ""].slice(0, 3);
   const initialPersona = normalizePersonaSettings(profile);
@@ -229,10 +239,10 @@ export function SettingsForm({ profile }: { profile: Profile }) {
 
           <fieldset className="flex flex-col gap-3">
             <legend className="text-sm font-medium text-zinc-200">
-              Proactivity frequency
+              Digest frequency
             </legend>
             <p className="text-sm text-zinc-500">
-              How often should Ori check in without you asking?
+              How often Ori prepares a quiet digest — never pushy notifications.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
               {FREQUENCY_OPTIONS.map((option) => (
@@ -254,6 +264,18 @@ export function SettingsForm({ profile }: { profile: Profile }) {
               ))}
             </div>
           </fieldset>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-medium tracking-tight">Muted topics</h2>
+          <p className="text-sm text-zinc-400">
+            Silence individual topics from digests and the dashboard check-in.
+          </p>
+        </div>
+        <div className="mt-5">
+          <TopicMuteList topics={topics} />
         </div>
       </section>
 

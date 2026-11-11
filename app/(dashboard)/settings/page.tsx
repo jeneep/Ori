@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { DataControls } from "@/components/settings/data-controls";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { getCurrentProfile } from "@/lib/profile";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
   const profile = await getCurrentProfile();
@@ -14,6 +15,13 @@ export default async function SettingsPage() {
     redirect("/onboarding");
   }
 
+  const supabase = createClient();
+  const { data: topics } = await supabase
+    .from("topics")
+    .select("id, title, status, muted")
+    .eq("user_id", profile.id)
+    .order("created_at", { ascending: false });
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -21,11 +29,11 @@ export default async function SettingsPage() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Tune Ori’s voice, your goals, and how often Ori reaches out.
+          Tune Ori’s voice, your goals, digest cadence, and muted topics.
         </p>
       </div>
 
-      <SettingsForm profile={profile} />
+      <SettingsForm profile={profile} topics={topics ?? []} />
       <DataControls accountEmail={profile.email} />
     </div>
   );

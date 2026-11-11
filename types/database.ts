@@ -41,6 +41,7 @@ export interface Database {
           persona_tone: PersonaTone;
           persona_custom_tone: string;
           persona_guide_note: string;
+          last_digest_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -57,6 +58,7 @@ export interface Database {
           persona_tone?: PersonaTone;
           persona_custom_tone?: string;
           persona_guide_note?: string;
+          last_digest_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -73,6 +75,7 @@ export interface Database {
           persona_tone?: PersonaTone;
           persona_custom_tone?: string;
           persona_guide_note?: string;
+          last_digest_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -94,6 +97,7 @@ export interface Database {
           description: string | null;
           current_view: string;
           status: TopicStatus;
+          muted: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -104,6 +108,7 @@ export interface Database {
           description?: string | null;
           current_view?: string;
           status?: TopicStatus;
+          muted?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -114,6 +119,7 @@ export interface Database {
           description?: string | null;
           current_view?: string;
           status?: TopicStatus;
+          muted?: boolean;
           created_at?: string;
           updated_at?: string;
         };
