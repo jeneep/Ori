@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { CaptureForm } from "@/components/capture/capture-form";
+import { CheckInCard } from "@/components/dashboard/check-in-card";
+import { buildCheckInCardModel } from "@/lib/proactive/digest";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
@@ -8,14 +10,32 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: profile }, { data: topics }] = await Promise.all([
+  const [
+    { data: profile },
+    { data: topics },
+    { data: experiments },
+  ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle(),
     supabase
       .from("topics")
-      .select("id, title, status, created_at")
+      .select("id, title, status, current_view, updated_at, muted, created_at")
       .eq("user_id", user!.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("experiments")
+      .select("id, topic_id, name, hypothesis, status, updated_at")
+      .eq("user_id", user!.id)
+      .order("updated_at", { ascending: false })
+      .limit(40),
   ]);
+
+  const checkIn = profile
+    ? buildCheckInCardModel({
+        profile,
+        topics: topics ?? [],
+        experiments: experiments ?? [],
+      })
+    : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -27,6 +47,8 @@ export default async function DashboardPage() {
           Your goals, constraints, and topics in one place.
         </p>
       </div>
+
+      {checkIn ? <CheckInCard model={checkIn} /> : null}
 
       <section className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-zinc-200 bg-white p-6">
@@ -64,7 +86,7 @@ export default async function DashboardPage() {
             {profile?.constraints?.trim() || "None set."}
           </p>
           <p className="mt-4 text-xs text-zinc-500">
-            Proactivity: {profile?.proactivity_frequency ?? "off"}
+            Digest: {profile?.proactivity_frequency ?? "off"}
           </p>
         </div>
       </section>
@@ -85,7 +107,7 @@ export default async function DashboardPage() {
                   {topic.title}
                 </Link>
                 <span className="text-xs uppercase tracking-wide text-zinc-500">
-                  {topic.status}
+                  {topic.muted ? "muted" : topic.status}
                 </span>
               </li>
             ))}

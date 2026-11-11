@@ -95,3 +95,37 @@ export async function updateSettings(
   revalidatePath("/topics", "layout");
   return { error: null, success: "Settings saved." };
 }
+
+export async function setTopicMuted(
+  topicId: string,
+  muted: boolean
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const id = topicId?.trim();
+  if (!id) {
+    return { error: "Topic is required." };
+  }
+
+  const { error } = await supabase
+    .from("topics")
+    .update({ muted: Boolean(muted) })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath(`/topics/${id}`);
+  return { error: null };
+}

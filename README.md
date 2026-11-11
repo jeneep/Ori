@@ -66,6 +66,14 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - Injected into every coach system prompt and the synthetic reasoning layer
 - Settings UI includes a live preview of how Ori will sound
 
+### Extreme proactivity (digests)
+- Digest frequency on `profiles.proactivity_frequency`: `off` | `daily` | `weekly`
+- Mute individual topics via `topics.muted` (excluded from digests + dashboard check-in)
+- Dashboard shows a calm dark **Check-in / Next digest** card summarizing open experiments and recent current-view updates
+- `GET/POST /api/proactive` generates digest content from persona + current views + experiments (`lib/proactive/digest.ts`)
+- Cron-ready: `POST /api/proactive` with `Authorization: Bearer $CRON_SECRET` and `{ "mode": "due" }` (needs `SUPABASE_SERVICE_ROLE_KEY`); advances `profiles.last_digest_at`
+- Authenticated preview: `GET /api/proactive` or `POST /api/proactive` with `{ "force": true }`
+
 ### Coach chat
 - Topic page shows `current_view` and a chat that loads recent messages
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis
@@ -115,6 +123,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/auth/callback` | OAuth / email confirmation callback |
 | `/dashboard` | Protected dashboard (requires session + onboarding) |
 | `/onboarding` | Collect goals, constraints, and first topic |
-| `/settings` | Edit goals, constraints, proactivity frequency |
+| `/settings` | Edit persona, goals, digest frequency, muted topics |
+| `/api/proactive` | Generate / preview digests (user session or cron) |
 
 Middleware refreshes the Supabase session, sends new users to `/onboarding`, and redirects unauthenticated users away from protected routes.
