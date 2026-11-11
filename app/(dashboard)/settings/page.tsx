@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { DataControls } from "@/components/settings/data-controls";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { getCurrentProfile } from "@/lib/profile";
 
@@ -14,7 +15,7 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
           Settings
@@ -23,7 +24,9 @@ export default async function SettingsPage() {
           Update your goals, constraints, and how often Ori reaches out.
         </p>
       </div>
+
       <SettingsForm profile={profile} />
+      <DataControls accountEmail={profile.email} />
     </div>
   );
 }

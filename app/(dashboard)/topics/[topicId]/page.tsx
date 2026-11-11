@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CaptureForm } from "@/components/capture/capture-form";
+import { ExportMenu } from "@/components/export/export-menu";
+import { DeleteTopicButton } from "@/components/topics/delete-topic-button";
 import { ExperimentCards } from "@/components/topics/experiment-cards";
 import { TopicChat } from "@/components/topics/topic-chat";
 import { createClient } from "@/lib/supabase/server";
@@ -66,23 +68,34 @@ export default async function TopicPage({ params }: TopicPageProps) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <Link
-          href="/dashboard"
-          className="text-sm text-zinc-500 underline-offset-4 hover:text-zinc-800 hover:underline"
-        >
-          ← Dashboard
-        </Link>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900">
-          {topic.title}
-        </h1>
-        {topic.description ? (
-          <p className="mt-1 text-sm text-zinc-500">{topic.description}</p>
-        ) : (
-          <p className="mt-1 text-sm text-zinc-500">
-            Capture context, refine the current view, and run small experiments.
-          </p>
-        )}
+      <div className="flex flex-col gap-4">
+        <div>
+          <Link
+            href="/dashboard"
+            className="text-sm text-zinc-500 underline-offset-4 hover:text-zinc-800 hover:underline"
+          >
+            ← Dashboard
+          </Link>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900">
+            {topic.title}
+          </h1>
+          {topic.description ? (
+            <p className="mt-1 text-sm text-zinc-500">{topic.description}</p>
+          ) : (
+            <p className="mt-1 text-sm text-zinc-500">
+              Capture context, refine the current view, and run small experiments.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:flex-row sm:items-start sm:justify-between">
+          <ExportMenu
+            scope="topic"
+            topicId={topic.id}
+            label="Export this topic"
+          />
+          <DeleteTopicButton topicId={topic.id} topicTitle={topic.title} />
+        </div>
       </div>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">

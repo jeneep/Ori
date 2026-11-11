@@ -205,6 +205,10 @@ create policy "Users can update their own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
+create policy "Users can delete their own profile"
+  on public.profiles for delete
+  using (auth.uid() = id);
+
 -- topics
 create policy "Users can view their own topics"
   on public.topics for select

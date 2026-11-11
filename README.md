@@ -65,6 +65,12 @@ Apply via the Supabase SQL editor or CLI (`supabase db push` / `supabase migrati
 - `POST /api/coach` pulls the user model, current view, recent content, and recent messages, then replies consistently with that synthesis
 - Important exchanges can offer a `current_view` update; chat can create experiment cards
 
+### Export + deletion
+- Export a topic or all account data as Markdown or JSON (`GET /api/export`)
+- Delete a topic with typed confirmation (`DELETE /api/topics/[topicId]`)
+- Delete account with typed confirmation (`DELETE /api/account`)
+- Settings includes a short ownership note: you own your Ori data
+
 ## Environment variables
 
 Copy `.env.local.example` to `.env.local` and set:
