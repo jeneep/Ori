@@ -1,7 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Force a clean rebuild after broken production aliases.
-  generateBuildId: async () => `ori-${Date.now()}`,
-};
+const nextConfig = {};
 
 export default nextConfig;
