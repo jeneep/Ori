@@ -1,28 +1,18 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  try {
-    return await updateSession(request);
-  } catch {
-    if (request.nextUrl.pathname === "/") {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/login";
-      return NextResponse.redirect(redirectUrl);
-    }
-    return NextResponse.next({ request });
-  }
+/**
+ * Keep middleware free of Supabase imports. Pulling `@supabase/ssr` into the
+ * Edge middleware bundle caused MIDDLEWARE_INVOCATION_FAILED on Vercel and made
+ * /login and /signup unreachable. Auth gating lives in route layouts/pages.
+ */
+export function middleware(request: NextRequest) {
+  // Unauthenticated root redirect is handled by app/page.tsx after the request
+  // reaches the App Router. Pass through so login/signup stay reachable.
+  return NextResponse.next({ request });
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
