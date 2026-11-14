@@ -78,9 +78,11 @@ Copy `.env.local.example` to `.env.local` and set:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# Optional — email confirmation redirect origin (defaults to the browser origin)
+# NEXT_PUBLIC_SITE_URL=https://ori-cyan.vercel.app
 ```
 
-Values are in **Supabase Dashboard → Project Settings → API**.
+Values are in **Supabase Dashboard → Project Settings → API**. Use the **bare** project URL (no `/rest/v1` or `/auth/v1` suffix) — a suffixed URL makes signup fail with `Invalid path specified in request URL`. Also add `https://ori-cyan.vercel.app/auth/callback` under **Authentication → URL Configuration → Redirect URLs**.
 
 ## Getting started
 

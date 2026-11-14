@@ -28,7 +28,7 @@ function loadEnvLocal() {
 
 loadEnvLocal();
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const openaiKey = process.env.OPENAI_API_KEY;
 
@@ -37,9 +37,22 @@ function fail(message) {
   process.exit(1);
 }
 
-if (!url) fail("NEXT_PUBLIC_SUPABASE_URL missing");
+function normalizeSupabaseUrl(raw) {
+  let url = raw.trim();
+  for (let i = 0; i < 3; i++) {
+    url = url.replace(/\/+$/, "");
+    const stripped = url.replace(/\/(rest|auth|storage|realtime)\/v1$/i, "");
+    if (stripped === url) break;
+    url = stripped;
+  }
+  return url;
+}
+
+if (!rawUrl) fail("NEXT_PUBLIC_SUPABASE_URL missing");
 if (!serviceKey) fail("SUPABASE_SERVICE_ROLE_KEY missing");
 if (!openaiKey) fail("OPENAI_API_KEY missing");
+
+const url = normalizeSupabaseUrl(rawUrl);
 
 const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },

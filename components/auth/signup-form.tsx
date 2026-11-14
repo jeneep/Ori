@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthCallbackUrl } from "@/lib/supabase/env";
 
 export function SignupForm() {
   const router = useRouter();
@@ -24,7 +25,8 @@ export function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // Must be an absolute URL on an allowlisted origin (e.g. https://ori-cyan.vercel.app/auth/callback).
+        emailRedirectTo: getAuthCallbackUrl(window.location.origin),
       },
     });
 
